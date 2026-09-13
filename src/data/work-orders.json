@@ -1,0 +1,62 @@
+[
+  {
+    "id": "mh-001", "taskId": "2602M4698957", "linkedId": "20260214200887", "status": "待核验", "source": "12345上报",
+    "receivedAt": "2026-02-14 08:06:00", "pushDepartment": "区域运中心", "caseCategory": "其他", "businessType": "求助类", "street": "吴泾镇",
+    "address": "剑川路沿线公共区域", "responsibleDepartment": "吴泾镇城运中心", "contact": "陈先生 138****6821",
+    "description": "市民反映公共区域存在设施损坏，希望相关部门尽快核实并安排处置。", "complainant": "陈先生", "phone": "138****6821",
+    "eventCategory": "公共设施—道路附属设施—设施损坏", "standardAddress": "吴泾镇·剑川路·沿线公共区域", "urgency": "一般",
+    "previousStep": "申请核查", "previousAt": "2026-02-14 08:12:38", "previousNote": "请属地单位核实现场情况，明确责任部门并及时反馈办理进展。",
+    "attachments": [{ "id": "a-001", "name": "现场照片_001.jpeg", "stage": "受理(现场查看)", "department": "区域运中心", "user": "值班员", "uploadedAt": "2026-02-14 08:09:24", "onSite": true }],
+    "quickReplies": ["工作内容已确认，请领导尽快安排人员协助后续计划", "已修复，同意结案", "已处置，同意结案"]
+  },
+  {
+    "id": "mh-002", "taskId": "2602M4698975", "linkedId": "20260214201338", "status": "待核验", "source": "12345上报",
+    "receivedAt": "2026-02-14 08:21:00", "pushDepartment": "区域运中心", "caseCategory": "其他", "businessType": "投诉类", "street": "莘庄镇",
+    "address": "莘松路某居民小区北门", "responsibleDepartment": "莘庄镇城运中心", "contact": "王女士 136****1028",
+    "description": "小区北门附近夜间噪声影响居民休息，请核实噪声来源并协调处理。", "complainant": "王女士", "phone": "136****1028",
+    "eventCategory": "环境保护—噪声扰民—社会生活噪声", "standardAddress": "莘庄镇·莘松路·居民小区北门", "urgency": "一般",
+    "previousStep": "申请核查", "previousAt": "2026-02-14 08:27:12", "previousNote": "请结合属地管理职责核实，并在规定时限内反馈。",
+    "attachments": [{ "id": "a-002", "name": "问题位置截图.jpeg", "stage": "受理", "department": "区域运中心", "user": "坐席员", "uploadedAt": "2026-02-14 08:23:45", "onSite": false }],
+    "quickReplies": ["请属地尽快核实处理，并及时反馈办理情况。", "已联系市民并解释说明", "已处置，同意结案"]
+  },
+  {
+    "id": "mh-003", "taskId": "2602M4698976", "linkedId": "20260214201396", "status": "待核验", "source": "12345上报",
+    "receivedAt": "2026-02-14 08:21:01", "pushDepartment": "区域运中心", "caseCategory": "其他", "businessType": "投诉类", "street": "浦江镇",
+    "address": "浦星公路与江月路交叉口", "responsibleDepartment": "浦江镇城运中心", "contact": "周先生 139****4512",
+    "description": "路口人行道有零散堆物，占用通行空间，建议尽快清理。", "complainant": "周先生", "phone": "139****4512",
+    "eventCategory": "市容环境—乱堆物—公共区域堆物", "standardAddress": "浦江镇·浦星公路·江月路口", "urgency": "一般",
+    "previousStep": "申请核查", "previousAt": "2026-02-14 08:28:08", "previousNote": "请属地单位现场核查处置。",
+    "attachments": [{ "id": "a-003", "name": "路口堆物.jpeg", "stage": "受理", "department": "区域运中心", "user": "坐席员", "uploadedAt": "2026-02-14 08:25:11", "onSite": false }],
+    "quickReplies": ["请单位尽快核实处理，并及时反馈办理情况。", "已修复，同意结案", "已处置，同意结案"]
+  },
+  {
+    "id": "mh-004", "taskId": "2602M4698982", "linkedId": "SSP2026021490000019", "status": "待核验", "source": "12345上报",
+    "receivedAt": "2026-02-14 08:30:02", "pushDepartment": "区域运中心", "caseCategory": "传染病疫情", "businessType": "求助类", "street": "颛桥镇",
+    "address": "都市路附近公共服务点", "responsibleDepartment": "颛桥镇城运中心", "contact": "赵女士 137****7736",
+    "description": "市民咨询公共服务点开放时间，希望相关单位给予答复。", "complainant": "赵女士", "phone": "137****7736",
+    "eventCategory": "公共服务—咨询求助—服务时间咨询", "standardAddress": "颛桥镇·都市路·公共服务点", "urgency": "一般",
+    "previousStep": "申请核查", "previousAt": "2026-02-14 08:35:19", "previousNote": "请业务部门核实开放信息并联系市民。",
+    "attachments": [{ "id": "a-004", "name": "服务点位置.jpeg", "stage": "受理", "department": "区域运中心", "user": "值班员", "uploadedAt": "2026-02-14 08:32:16", "onSite": false }],
+    "quickReplies": ["请业务部门核实后答复市民。", "已联系市民并解释说明", "已处置，同意结案"]
+  },
+  {
+    "id": "mh-005", "taskId": "2602M4699011", "linkedId": "20260214201811", "status": "待核验", "source": "网格上报",
+    "receivedAt": "2026-02-14 08:45:01", "pushDepartment": "区域运中心", "caseCategory": "其他", "businessType": "投诉类", "street": "梅陇镇",
+    "address": "莲花南路沿街区域", "responsibleDepartment": "梅陇镇城运中心", "contact": "刘先生 135****9175",
+    "description": "沿街非机动车停放秩序较乱，影响行人正常通行。", "complainant": "刘先生", "phone": "135****9175",
+    "eventCategory": "交通管理—非机动车—无序停放", "standardAddress": "梅陇镇·莲花南路·沿街区域", "urgency": "一般",
+    "previousStep": "申请核查", "previousAt": "2026-02-14 08:51:44", "previousNote": "请属地安排人员查看并维护现场秩序。",
+    "attachments": [{ "id": "a-005", "name": "车辆停放照片.jpeg", "stage": "受理", "department": "区域运中心", "user": "网格员", "uploadedAt": "2026-02-14 08:47:29", "onSite": true }],
+    "quickReplies": ["请属地尽快核实处理，并及时反馈办理情况。", "已完成秩序维护", "已处置，同意结案"]
+  },
+  {
+    "id": "mh-006", "taskId": "2602M4699053", "linkedId": "20260214202117", "status": "待上报核实", "source": "网格上报",
+    "receivedAt": "2026-02-14 09:03:12", "pushDepartment": "区域运中心", "caseCategory": "市容环境", "businessType": "巡查类", "street": "江川路街道",
+    "address": "东川路地铁站周边", "responsibleDepartment": "江川路街道城运中心", "contact": "网格员 13****",
+    "description": "巡查发现共享单车集中停放影响通行，请核实上报内容。", "complainant": "网格员", "phone": "—",
+    "eventCategory": "市容环境—非机动车—共享单车堆积", "standardAddress": "江川路街道·东川路·地铁站周边", "urgency": "一般",
+    "previousStep": "网格上报", "previousAt": "2026-02-14 09:03:12", "previousNote": "现场照片已上传，请核实案件信息。",
+    "attachments": [{ "id": "a-006", "name": "网格巡查现场.jpeg", "stage": "网格上报", "department": "江川路街道", "user": "网格员", "uploadedAt": "2026-02-14 09:03:12", "onSite": true }],
+    "quickReplies": ["请补充现场位置信息。", "信息核实无误", "退回补充材料"]
+  }
+]

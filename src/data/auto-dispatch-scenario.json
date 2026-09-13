@@ -1,0 +1,148 @@
+{
+  "id": "minhang-auto-dispatch-demo-v1",
+  "name": "自动派单标准演示",
+  "intervalMs": 5000,
+  "items": [
+    {
+      "arrivalOffsetMs": 5000,
+      "analysisDurationMs": 1200,
+      "outcome": "auto-dispatched",
+      "classificationConfidence": 96,
+      "addressConfidence": 93,
+      "targetDepartment": "吴泾镇城运中心",
+      "dispatchOpinion": "请吴泾镇城运中心核实井盖破损情况，及时设置安全提示并安排维修。",
+      "order": {
+        "id": "auto-001", "taskId": "2609A130001", "linkedId": "20260913093001", "status": "待核验", "source": "12345上报",
+        "receivedAt": "2026-09-13 09:30:05", "pushDepartment": "区域运中心", "caseCategory": "公共设施", "businessType": "投诉类", "street": "吴泾镇",
+        "address": "剑川路虹梅南路口东侧", "responsibleDepartment": "吴泾镇城运中心", "contact": "沈先生 138****2701",
+        "description": "市民反映路口东侧人行道井盖松动，行人经过时存在安全隐患。", "complainant": "沈先生", "phone": "138****2701",
+        "eventCategory": "公共设施—道路附属设施—窨井盖损坏", "standardAddress": "吴泾镇·剑川路·虹梅南路口东侧", "urgency": "一般",
+        "previousStep": "12345上报", "previousAt": "2026-09-13 09:30:05", "previousNote": "请核实现场安全隐患并及时处置。",
+        "attachments": [], "quickReplies": ["请吴泾镇城运中心核实井盖破损情况，及时设置安全提示并安排维修。"]
+      }
+    },
+    {
+      "arrivalOffsetMs": 10000,
+      "analysisDurationMs": 1200,
+      "outcome": "auto-dispatched",
+      "classificationConfidence": 92,
+      "addressConfidence": 89,
+      "targetDepartment": "莘庄镇城运中心",
+      "dispatchOpinion": "请莘庄镇城运中心核实沿街违规张贴情况并组织清理。",
+      "order": {
+        "id": "auto-002", "taskId": "2609A130002", "linkedId": "20260913093002", "status": "待核验", "source": "网格上报",
+        "receivedAt": "2026-09-13 09:30:10", "pushDepartment": "区域运中心", "caseCategory": "市容环境", "businessType": "巡查类", "street": "莘庄镇",
+        "address": "莘松路958弄沿街围墙", "responsibleDepartment": "莘庄镇城运中心", "contact": "网格员 18****",
+        "description": "网格巡查发现沿街围墙存在多处违规张贴广告，影响街面环境。", "complainant": "网格员", "phone": "—",
+        "eventCategory": "市容环境—非法张贴—乱张贴", "standardAddress": "莘庄镇·莘松路958弄·沿街围墙", "urgency": "一般",
+        "previousStep": "网格上报", "previousAt": "2026-09-13 09:30:10", "previousNote": "现场照片已上传。",
+        "attachments": [], "quickReplies": ["请莘庄镇城运中心核实沿街违规张贴情况并组织清理。"]
+      }
+    },
+    {
+      "arrivalOffsetMs": 15000,
+      "analysisDurationMs": 1200,
+      "outcome": "needs-manual",
+      "classificationConfidence": 88,
+      "addressConfidence": 54,
+      "targetDepartment": "浦江镇城运中心",
+      "dispatchOpinion": "请浦江镇城运中心根据人工确认的标准地址核查夜间施工噪声问题，并及时反馈。",
+      "addressRecommendations": [
+        {
+          "id": "auto-address-01",
+          "title": "浦江镇·浦星公路·江月路口北侧",
+          "subtitle": "文本中的“浦星公路附近工地”可对应多个建设点位",
+          "confidence": 54,
+          "reason": "道路名称可识别，但缺少门牌号、工地名称和方向描述，需要人工确认。",
+          "evidence": ["问题描述只包含主干道路名称。", "周边500米内存在3处在建项目。"],
+          "tag": "需核验",
+          "detail": "浦星公路与江月路交叉口北侧约180米",
+          "position": [121.50562, 31.08391]
+        },
+        {
+          "id": "auto-address-02",
+          "title": "浦江镇·浦星公路·联航路口西侧",
+          "subtitle": "历史同类投诉中出现频次较高的施工点",
+          "confidence": 47,
+          "reason": "案件描述未出现联航路，只有历史相似性支持。",
+          "evidence": ["近30天该点位有2条夜间施工投诉。", "与来电方描述的方位信息不完全一致。"],
+          "detail": "浦星公路与联航路交叉口西侧约220米",
+          "position": [121.50838, 31.07228]
+        },
+        {
+          "id": "auto-address-03",
+          "title": "浦江镇·浦星公路·沈杜公路口东侧",
+          "subtitle": "范围检索得到的备选建设点位",
+          "confidence": 36,
+          "reason": "距离描述中心较远，仅作为人工排查备选。",
+          "evidence": ["道路关键词匹配。", "未命中投诉人补充的周边地标。"],
+          "detail": "浦星公路与沈杜公路交叉口东侧约300米",
+          "position": [121.51251, 31.06178]
+        }
+      ],
+      "order": {
+        "id": "auto-003", "taskId": "2609A130003", "linkedId": "20260913093003", "status": "待核验", "source": "12345上报",
+        "receivedAt": "2026-09-13 09:30:15", "pushDepartment": "区域运中心", "caseCategory": "环境保护", "businessType": "投诉类", "street": "浦江镇",
+        "address": "浦星公路附近某工地", "responsibleDepartment": "浦江镇城运中心", "contact": "周女士 136****5193",
+        "description": "市民反映浦星公路附近有工地夜间施工，具体门牌和工地名称不清楚。", "complainant": "周女士", "phone": "136****5193",
+        "eventCategory": "环境保护—噪声扰民—建筑施工噪声", "standardAddress": "待人工确认标准地址", "urgency": "一般",
+        "previousStep": "12345上报", "previousAt": "2026-09-13 09:30:15", "previousNote": "地址信息不完整，请人工核对推荐点位。",
+        "attachments": [], "quickReplies": ["请浦江镇城运中心根据人工确认的标准地址核查夜间施工噪声问题，并及时反馈。"]
+      }
+    },
+    {
+      "arrivalOffsetMs": 20000,
+      "analysisDurationMs": 1200,
+      "outcome": "auto-dispatched",
+      "classificationConfidence": 94,
+      "addressConfidence": 91,
+      "targetDepartment": "颛桥镇城运中心",
+      "dispatchOpinion": "请颛桥镇城运中心尽快清理倒伏树枝，消除道路通行隐患。",
+      "order": {
+        "id": "auto-004", "taskId": "2609A130004", "linkedId": "20260913093004", "status": "待核验", "source": "网格上报",
+        "receivedAt": "2026-09-13 09:30:20", "pushDepartment": "区域运中心", "caseCategory": "绿化市容", "businessType": "巡查类", "street": "颛桥镇",
+        "address": "都市路金都路口南侧", "responsibleDepartment": "颛桥镇城运中心", "contact": "网格员 27****",
+        "description": "巡查发现行道树树枝倒伏占用非机动车道，需要尽快清理。", "complainant": "网格员", "phone": "—",
+        "eventCategory": "绿化管理—行道树—树枝倒伏", "standardAddress": "颛桥镇·都市路·金都路口南侧", "urgency": "次紧急",
+        "previousStep": "网格上报", "previousAt": "2026-09-13 09:30:20", "previousNote": "现场位置清晰，建议快速处置。",
+        "attachments": [], "quickReplies": ["请颛桥镇城运中心尽快清理倒伏树枝，消除道路通行隐患。"]
+      }
+    },
+    {
+      "arrivalOffsetMs": 25000,
+      "analysisDurationMs": 1200,
+      "outcome": "auto-dispatched",
+      "classificationConfidence": 90,
+      "addressConfidence": 87,
+      "targetDepartment": "梅陇镇城运中心",
+      "dispatchOpinion": "请梅陇镇城运中心核查餐饮油烟问题，督促商户规范经营并反馈结果。",
+      "order": {
+        "id": "auto-005", "taskId": "2609A130005", "linkedId": "20260913093005", "status": "待核验", "source": "12345上报",
+        "receivedAt": "2026-09-13 09:30:25", "pushDepartment": "区域运中心", "caseCategory": "环境保护", "businessType": "投诉类", "street": "梅陇镇",
+        "address": "莲花南路1188弄商业街", "responsibleDepartment": "梅陇镇城运中心", "contact": "顾女士 137****6280",
+        "description": "商业街餐饮店晚间油烟气味明显，影响附近居民开窗通风。", "complainant": "顾女士", "phone": "137****6280",
+        "eventCategory": "环境保护—大气污染—餐饮油烟", "standardAddress": "梅陇镇·莲花南路1188弄·商业街", "urgency": "一般",
+        "previousStep": "12345上报", "previousAt": "2026-09-13 09:30:25", "previousNote": "请属地核实并联系市民。",
+        "attachments": [], "quickReplies": ["请梅陇镇城运中心核查餐饮油烟问题，督促商户规范经营并反馈结果。"]
+      }
+    },
+    {
+      "arrivalOffsetMs": 30000,
+      "analysisDurationMs": 1200,
+      "outcome": "auto-dispatched",
+      "classificationConfidence": 97,
+      "addressConfidence": 95,
+      "targetDepartment": "江川路街道城运中心",
+      "dispatchOpinion": "请江川路街道城运中心核查积水点并协调排水处置。",
+      "order": {
+        "id": "auto-006", "taskId": "2609A130006", "linkedId": "AI20260913093006", "status": "待核验", "source": "智能设备识别",
+        "receivedAt": "2026-09-13 09:30:30", "pushDepartment": "区域运中心", "caseCategory": "防汛排水", "businessType": "设备告警", "street": "江川路街道",
+        "address": "东川路地铁站2号口", "responsibleDepartment": "江川路街道城运中心", "contact": "视频巡检设备 AI-03",
+        "description": "视频巡检识别到地铁站出口附近路面积水，影响行人通行。", "complainant": "智能巡检设备", "phone": "—",
+        "eventCategory": "城市管理—道路积水—一般积水", "standardAddress": "江川路街道·东川路地铁站·2号口", "urgency": "次紧急",
+        "previousStep": "智能设备识别", "previousAt": "2026-09-13 09:30:30", "previousNote": "设备连续3帧识别积水区域。",
+        "attachments": [], "quickReplies": ["请江川路街道城运中心核查积水点并协调排水处置。"]
+      }
+    }
+  ]
+}
