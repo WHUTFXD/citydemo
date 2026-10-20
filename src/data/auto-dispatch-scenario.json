@@ -5,7 +5,7 @@
   "items": [
     {
       "arrivalOffsetMs": 5000,
-      "analysisDurationMs": 1200,
+      "analysisDurationMs": 2500,
       "outcome": "auto-dispatched",
       "classificationConfidence": 96,
       "addressConfidence": 93,
@@ -23,7 +23,7 @@
     },
     {
       "arrivalOffsetMs": 10000,
-      "analysisDurationMs": 1200,
+      "analysisDurationMs": 2500,
       "outcome": "auto-dispatched",
       "classificationConfidence": 92,
       "addressConfidence": 89,
@@ -41,7 +41,7 @@
     },
     {
       "arrivalOffsetMs": 15000,
-      "analysisDurationMs": 1200,
+      "analysisDurationMs": 2500,
       "outcome": "needs-manual",
       "classificationConfidence": 88,
       "addressConfidence": 54,
@@ -54,7 +54,15 @@
           "subtitle": "文本中的“浦星公路附近工地”可对应多个建设点位",
           "confidence": 54,
           "reason": "道路名称可识别，但缺少门牌号、工地名称和方向描述，需要人工确认。",
-          "evidence": ["问题描述只包含主干道路名称。", "周边500米内存在3处在建项目。"],
+          "evidence": [{
+            "id": "auto-address-record-01",
+            "type": "address-record",
+            "title": "浦星公路—江月路口北侧候选点记录",
+            "summary": "道路关键词命中，500米范围内存在3处在建项目。",
+            "source": "闵行区标准地址与建设项目POI库",
+            "metadata": ["经度：121.505620", "纬度：31.083910", "道路：浦星公路", "候选工地：3处"],
+            "content": "原始描述仅包含浦星公路和工地两个要素，无法唯一定位门牌或项目名称；该记录是距离文本中心点最近的候选位置，仍需人工核验。"
+          }],
           "tag": "需核验",
           "detail": "浦星公路与江月路交叉口北侧约180米",
           "position": [121.50562, 31.08391]
@@ -65,7 +73,15 @@
           "subtitle": "历史同类投诉中出现频次较高的施工点",
           "confidence": 47,
           "reason": "案件描述未出现联航路，只有历史相似性支持。",
-          "evidence": ["近30天该点位有2条夜间施工投诉。", "与来电方描述的方位信息不完全一致。"],
+          "evidence": [{
+            "id": "auto-address-record-02",
+            "type": "address-record",
+            "title": "浦星公路—联航路口西侧候选点记录",
+            "summary": "历史投诉频次较高，但方位信息与本次描述不完整匹配。",
+            "source": "闵行区标准地址与建设项目POI库",
+            "metadata": ["经度：121.508380", "纬度：31.072280", "近30天投诉：2条", "文本未命中：联航路"],
+            "content": "该点位的夜间施工投诉历史较多，但本次来电未提及联航路或明确方位，仅能作为人工排查备选。"
+          }],
           "detail": "浦星公路与联航路交叉口西侧约220米",
           "position": [121.50838, 31.07228]
         },
@@ -75,7 +91,15 @@
           "subtitle": "范围检索得到的备选建设点位",
           "confidence": 36,
           "reason": "距离描述中心较远，仅作为人工排查备选。",
-          "evidence": ["道路关键词匹配。", "未命中投诉人补充的周边地标。"],
+          "evidence": [{
+            "id": "auto-address-record-03",
+            "type": "address-record",
+            "title": "浦星公路—沈杜公路口东侧候选点记录",
+            "summary": "仅命中道路关键词，未命中周边地标。",
+            "source": "闵行区标准地址与建设项目POI库",
+            "metadata": ["经度：121.512510", "纬度：31.061780", "匹配要素：浦星公路", "缺失要素：门牌、项目名称"],
+            "content": "候选点距离描述中心较远，且缺少门牌号、项目名称和方位支撑，因此置信度最低，仅供人工扩大范围排查。"
+          }],
           "detail": "浦星公路与沈杜公路交叉口东侧约300米",
           "position": [121.51251, 31.06178]
         }
@@ -92,7 +116,7 @@
     },
     {
       "arrivalOffsetMs": 20000,
-      "analysisDurationMs": 1200,
+      "analysisDurationMs": 2500,
       "outcome": "auto-dispatched",
       "classificationConfidence": 94,
       "addressConfidence": 91,
@@ -110,7 +134,7 @@
     },
     {
       "arrivalOffsetMs": 25000,
-      "analysisDurationMs": 1200,
+      "analysisDurationMs": 2500,
       "outcome": "auto-dispatched",
       "classificationConfidence": 90,
       "addressConfidence": 87,
@@ -128,7 +152,7 @@
     },
     {
       "arrivalOffsetMs": 30000,
-      "analysisDurationMs": 1200,
+      "analysisDurationMs": 2500,
       "outcome": "auto-dispatched",
       "classificationConfidence": 97,
       "addressConfidence": 95,

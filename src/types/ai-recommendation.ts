@@ -1,6 +1,17 @@
 export interface AIRecommendationEvidenceDetail {
   id: string;
-  type: "work-order" | "rule";
+  type:
+    | "work-order"
+    | "classification-table"
+    | "address-record"
+    | "dispatch-rule"
+    | "policy-list"
+    | "responsibility-ledger"
+    | "road-ledger"
+    | "grid-roster"
+    | "sla-rule"
+    | "opinion-template"
+    | "case-corpus";
   title: string;
   summary: string;
   source: string;
@@ -16,6 +27,52 @@ export interface AIRecommendationItem {
   reason: string;
   evidence?: Array<string | AIRecommendationEvidenceDetail>;
   tag?: string;
+}
+
+export type AIConfidenceLevel = "trusted" | "review" | "manualRequired";
+
+export type RecommendationModule =
+  | "caseType"
+  | "address"
+  | "responsibility"
+  | "time"
+  | "primary"
+  | "assist"
+  | "opinion";
+
+export type RecommendationModuleStatus = "idle" | "adopted" | "stale" | "manuallyEdited" | "reviewed";
+
+export type RecommendationOperationAction = "adopt" | "undo" | "manualEdit" | "invalidate" | "review";
+
+export interface RecommendationModuleRuntime {
+  status: RecommendationModuleStatus;
+  appliedId?: string;
+  confidence?: number;
+  confidenceLevel?: AIConfidenceLevel;
+}
+
+export interface RecommendationOperationRecord {
+  id: string;
+  module: RecommendationModule;
+  action: RecommendationOperationAction;
+  candidateId?: string;
+  confidence?: number;
+  previousValue: string;
+  nextValue: string;
+  operator: string;
+  at: string;
+}
+
+export type RecommendationValidationSeverity = "pass" | "review" | "blocking";
+
+export interface RecommendationValidationItem {
+  module: RecommendationModule;
+  label: string;
+  severity: RecommendationValidationSeverity;
+  message: string;
+  anchorId: string;
+  confidence?: number;
+  reviewable?: boolean;
 }
 
 export interface CaseTypeRecommendation extends AIRecommendationItem {

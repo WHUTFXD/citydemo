@@ -55,11 +55,12 @@ export default function PlatformShell({ children, detail = false }: { children: 
           <div className="menu-section-title" onClick={() => setQueryOpen(!queryOpen)}><span>多条件查询</span>{queryOpen ? <CaretDownOutlined /> : <CaretRightOutlined />}</div>
           {queryOpen && fixedItems.slice(5).map((item) => <div key={item} className="menu-item">{item}</div>)}
           <div className="sidebar-heading" style={{ height: 48, marginTop: 4 }}><AppstoreOutlined style={{ color: "#357bd1" }} /> 评价中心(验收)<CaretDownOutlined style={{ marginLeft: "auto" }} /></div>
+          <Link href="/weekly-report" className={`menu-item ${pathname === '/weekly-report' ? 'active' : ''}`}><CalendarOutlined style={{ marginRight: 9 }} />智能周报<TagLabel /></Link>
         </aside>
         <section className="workspace">
           <nav className="workspace-tabs">
             <Link href="/" className="workspace-tab home">主页</Link>
-            <div className="workspace-tab active">{detail ? "核验派单" : "受理派单"}　×</div>
+            <div className="workspace-tab active">{pathname === '/weekly-report' ? '智能周报' : detail ? "核验派单" : "受理派单"}　×</div>
           </nav>
           <main className="page-content">{children}</main>
         </section>
@@ -67,3 +68,5 @@ export default function PlatformShell({ children, detail = false }: { children: 
     </div>
   );
 }
+
+function TagLabel() { return <span style={{ marginLeft: 8, fontSize: 10, color: '#2370bd', background: '#e1edff', padding: '0 4px' }}>AI</span>; }

@@ -1,11 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { App, Button, Form, Input, Modal, Select, Switch, Tag } from "antd";
 import {
   BulbOutlined,
   CheckCircleFilled,
+  ClockCircleOutlined,
   ExclamationCircleFilled,
   LoadingOutlined,
   MailOutlined,
@@ -32,13 +34,22 @@ function sourcePresentation(source: string) {
   return { label: "被", className: "" };
 }
 
+function formatWaitingTime(milliseconds: number) {
+  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+  const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, "0");
+  const seconds = (totalSeconds % 60).toString().padStart(2, "0");
+  return `${minutes}:${seconds}`;
+}
+
 function OrderCard({
   order,
   automation,
+  currentTime,
   onOpen,
 }: {
   order: WorkOrderSummary;
   automation?: AutoDispatchRuntimeItem;
+  currentTime?: number;
   onOpen: () => void;
 }) {
   const source = sourcePresentation(order.source);
@@ -69,6 +80,7 @@ function OrderCard({
           {state === "needsManual" && <Tag className="auto-status-tag manual" icon={<PushpinFilled />}>需人工干预</Tag>}
           {state === "manuallyResolved" && <Tag className="auto-status-tag resolved" icon={<CheckCircleFilled />}>人工已确认</Tag>}
           {state === "needsManual" && <Tag className="address-confidence-tag">标准地址置信度 {scenarioItem?.addressConfidence}%</Tag>}
+          {state === "needsManual" && currentTime && <Tag className="manual-waiting-tag" icon={<ClockCircleOutlined />}>已等待 {formatWaitingTime(currentTime - (automation?.enteredAt ?? currentTime))}</Tag>}
         </div>
         <div><strong>关联单号</strong>{order.linkedId}</div>
       </div>
@@ -102,6 +114,7 @@ export default function OrderListPage({ initialOrders }: { initialOrders: WorkOr
   const [keyword, setKeyword] = useState("");
   const [source, setSource] = useState<string>();
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [manualOnly, setManualOnly] = useState(false);
   const autoDispatch = useAutoDispatch();
 
   const orders = useMemo(() => initialOrders.filter((item) => {
@@ -111,13 +124,14 @@ export default function OrderListPage({ initialOrders }: { initialOrders: WorkOr
   const automatedOrders = useMemo(() => {
     if (tab !== "pending") return [];
     return [...autoDispatch.items]
+      .filter((runtime) => !manualOnly || runtime.state === "needsManual")
       .filter((runtime) => matchesFilters(autoDispatchScenario.items[runtime.scenarioIndex].order, keyword, source))
       .sort((left, right) => {
         const leftPinned = left.state === "needsManual" ? 1 : 0;
         const rightPinned = right.state === "needsManual" ? 1 : 0;
         return rightPinned - leftPinned || right.scenarioIndex - left.scenarioIndex;
       });
-  }, [autoDispatch.items, keyword, source, tab]);
+  }, [autoDispatch.items, keyword, manualOnly, source, tab]);
 
   const analyzing = autoDispatch.items.some((item) => item.state === "analyzing");
   const phaseCopy = autoDispatch.phase === "idle"
@@ -143,10 +157,22 @@ export default function OrderListPage({ initialOrders }: { initialOrders: WorkOr
           {autoDispatch.phase === "running" && autoDispatch.nextIndex < autoDispatch.total && (
             <span className="auto-countdown">下一单 {autoDispatch.countdownSeconds}s</span>
           )}
+          <Button
+            size="small"
+            className={`manual-queue-filter ${manualOnly ? "is-active" : ""}`}
+            icon={<ExclamationCircleFilled />}
+            disabled={!autoDispatch.needsManualCount && !manualOnly}
+            onClick={() => { setTab("pending"); setManualOnly((value) => !value); }}
+          >
+            待人工干预 {autoDispatch.needsManualCount}
+          </Button>
           <Button size="small" type="link" icon={<RedoOutlined />} disabled={autoDispatch.phase === "idle"} onClick={autoDispatch.replay}>重播</Button>
         </div>
       </div>
       <div className="list-toolbar">
+        <Link className="open-ai-workbench-list" href="/ai-workbench" target="_blank" rel="noopener noreferrer" title="在新窗口打开预设示例工单的 AI 辅助派单页面">
+          <RobotOutlined /> 打开 AI 辅助派单演示
+        </Link>
         <div className="source-legend">
           <span className="legend-item"><span className="legend-box">主</span>网格员上报</span>
           <span className="legend-item"><span className="legend-box orange">被</span>公众上报</span>
@@ -177,11 +203,12 @@ export default function OrderListPage({ initialOrders }: { initialOrders: WorkOr
             key={order.id}
             order={order}
             automation={runtime}
+            currentTime={autoDispatch.now}
             onOpen={() => router.push(manual ? `/orders/${order.id}?focus=address&source=auto-dispatch` : `/orders/${order.id}`)}
           />
         );
       })}
-      {orders.map((order) => <OrderCard key={order.id} order={order} onOpen={() => router.push(`/orders/${order.id}`)} />)}
+      {!manualOnly && orders.map((order) => <OrderCard key={order.id} order={order} onOpen={() => router.push(`/orders/${order.id}`)} />)}
       {!automatedOrders.length && !orders.length && <div className="empty-state">当前条件下暂无待处理工单</div>}
 
       <Modal title="高级搜索" open={advancedOpen} onCancel={() => setAdvancedOpen(false)} onOk={() => { setAdvancedOpen(false); message.success("筛选条件已应用"); }} okText="查询" cancelText="取消">

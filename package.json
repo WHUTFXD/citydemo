@@ -6,11 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:weekly": "tsc src/lib/weeklyReport.ts src/lib/weeklyReportExport.ts --outDir .qa --module commonjs --target es2022 --esModuleInterop --skipLibCheck && node --test tests/weekly-report.test.cjs"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",
     "antd": "^6.1.0",
+    "dayjs": "^1.11.23",
+    "docx": "^9.12.0",
+    "exceljs": "^4.4.0",
     "next": "16.3.4",
     "react": "19.2.8",
     "react-dom": "19.2.8"

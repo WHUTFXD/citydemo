@@ -8,11 +8,13 @@
   - `C:\Users\FXD\AppData\Local\Temp\codex-clipboard-04c7e4bd-314d-467b-97bc-9007a530e1d6.png`
   - `C:\Users\FXD\AppData\Local\Temp\codex-clipboard-ea81a520-0499-49aa-8f9e-9dd28336c779.png`
   - `C:\Users\FXD\AppData\Local\Temp\codex-clipboard-eb1302f7-9519-4706-9b5b-adc7c9801410.png`
+  - `C:\Users\FXD\AppData\Local\Temp\codex-clipboard-d55bbc09-7d5a-4637-823a-c4a24c9acdd7.jpg`
+  - `C:\Users\FXD\AppData\Local\Temp\codex-clipboard-13a20143-fd00-44c1-8041-acfca312944b.png`
 - Browser-rendered implementation:
   - `http://127.0.0.1:3000/`
   - `http://127.0.0.1:3000/orders/mh-006`
 - Implementation screenshot evidence: captured and inspected in the Codex in-app browser at 1440×900 and 1920×1080. The browser tool exposes the captures inline rather than as a persistent filesystem path.
-- Source pixels: list 1961×968; corrected detail reference 1407×863.
+- Source pixels: list 1961×968; corrected detail reference 1407×863; recommendation flow 834×2409; four-module popup reference 455×510.
 - Implementation CSS viewports: 1440×900 and 1920×1080; device pixel ratio 1.0.
 - State: default pending-verification list; automatic-dispatch running, paused, completed, and manual-intervention states; corrected dispatch-detail page with the low-confidence address bubble open.
 
@@ -35,6 +37,8 @@
 - AI layer: case classification, standardized address, and responsibility grid retain their compact field-level triggers. The entire “事件派单” block now has exactly one `AI推荐` trigger placed beside the section title; its floating panel keeps time independent and exposes three candidates each for primary unit, assisting unit, and dispatch opinion.
 - AI-entry consistency: all four `AI推荐` triggers now follow the field or section label they assist and use the same 62×24px size, robot icon, 11px regular label, pale-blue fill, blue border, 2px radius, hover treatment, and focus ring.
 - Independent adoption: adopting a result updates only its own module. Time does not alter departments or opinion; primary and assisting units do not alter each other; opinion does not overwrite either unit.
+- Recommendation evidence: each module now cites the source that actually participates in that decision. Classification uses a classification table; address uses the standard-address/POI record; grid uses grid/road/dispatch-rule records; time uses SLA rules; primary uses the responsibility ledger; assisting uses policy/collaboration rules; opinion uses an opinion template or similar-case corpus. Every source is a structured `查看详情` entry rather than generic repeated copy.
+- Four-module clarity: option cards no longer use rank circles, progress bars, decorative priority tags, or lightning icons. Each card leads with the value that will be applied, then a compact confidence state and one-sentence rationale. The opinion tab exposes the complete `将回填` text for all three choices before adoption.
 - Map layer: standardized-address candidates open in an AMap modal with three numbered markers and candidate switching. A separate “手动新增点位” mode lets the operator click the AMap surface, drag the new marker for fine adjustment, view longitude and latitude, and adopt the reverse-geocoded standard address without changing the preset candidate JSON.
 - Automation controls: the compact switch, phase copy, `n/6` counter, countdown, and replay action remain legible at both desktop widths and reuse the existing blue/gray tokens.
 - Automation cards: `AI研判中`, `AI自动派单`, `需人工干预`, address-confidence, and `人工已确认` tags are readable without covering task IDs or linked IDs.
@@ -70,6 +74,8 @@
 17. Primary, assisting, and opinion recommendations now form an explicit `3×3×3` path after the independent deadline step. The assisting set contains exactly three eligible choices, excludes the selected primary unit, and includes “无需协办单位”.
 18. The follow-up screenshot exposed a P2 consistency problem: AI triggers were distributed across field ends, label middles, and the event-section title, while the dispatch trigger had extra visual weight. All triggers were normalized to one token set and aligned to the same right-side vertical guide. Post-fix measurements at 1440×900 confirmed identical 62×24px bounds, font size/weight, colors, border, radius, and right offset for all four controls.
 19. The user preferred the controls on the left to match the reading and action sequence. The right-side rail was replaced with one semantic placement rule: field/section label → `AI推荐` → current value or form content. Browser QA at 1440×900 confirmed the two short field labels share the same button origin, the long responsibility label and event title keep the same immediate-following relationship, and no horizontal overflow was introduced.
+20. The flowchart review exposed repeated generic evidence across unrelated recommendations (P1 explainability defect). Evidence fixtures and the shared detail viewer were split into classification table, address record, grid roster, road ledger, dispatch rule, policy list, responsibility ledger, SLA rule, opinion template, and similar-case corpus presentations.
+21. The four dispatch tabs were visually dense and the opinion choice hid its applied text (P1 decision-quality defect). Cards were flattened into direct-answer rows, each opinion now previews the full fill value, and the floating panel was moved beside the trigger. A final Ant Design container-width fix kept the long opinion text at 660–680px and removed horizontal overflow at 1440×900 and 1920×1080.
 
 ## Interactions tested
 
@@ -80,6 +86,8 @@
 - The three field-level AI entries plus the single event-dispatch AI entry, top-three ranking display, evidence expansion where applicable, and one-click adoption.
 - Four independent event-dispatch recommendation groups, each with three visible presets and persistent per-group adopted state while the popup remains open.
 - Sequential adoption through all four groups: each adoption advanced exactly one tab, the footer progressed from `0/4` to `4/4`, and completed tabs remained available for revision.
+- The final sequential trace was `时限 → 主责 → 协办 → 意见`; the last opinion remained visible after adoption, and its complete preview text matched the dispatch-opinion field exactly.
+- Structured evidence details were opened from both a primary-unit recommendation (`权责台账详情`) and an opinion recommendation (`意见模板详情`); classification was separately verified as `分类对照表详情`. Fixture inspection confirmed that every recommendation evidence entry in both JSON files is structured and detail-viewable.
 - Adopting the first primary recommendation produced exactly three assisting candidates: two non-matching departments and “无需协办单位”; adopting the empty option cleared both assisting fields and advanced to dispatch opinion.
 - The manual assisting-department selector excluded the currently selected primary department and allowed both assisting controls to remain empty.
 - The first responsibility recommendation exposed two historical work orders and one rule file. Both the historical-order and rule-file detail dialogs were opened and their source, metadata, and content were verified.
@@ -91,6 +99,7 @@
 - The unified trigger set was rechecked at 1440×900: every trigger had a 62×24px bounding box and identical visual tokens; `scrollWidth` equaled `clientWidth` (1425px) and the browser reported no warnings or errors.
 - At 1440×900, document `scrollWidth` equaled `clientWidth` and the event-dispatch section contained exactly one AI trigger. The floating panel stayed fully within the viewport.
 - At 1920×1080, document `scrollWidth` again equaled `clientWidth`; no horizontal overflow was introduced.
+- After opening the longest opinion tab, the 1440×900 document width remained below the viewport width and the popup fit inside the viewport; at 1920×1080 the same state remained overflow-free.
 - Production lint, TypeScript, and build checks passed.
 - Full 31-second sequence: five automatic successes, one low-confidence manual exception, and no blocked subsequent arrivals.
 - Pause before first arrival, four-second paused hold, resume from the remaining countdown, and replay reset.

@@ -1,18 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Modal, Popover, Progress, Tag } from "antd";
+import { Button, Popover } from "antd";
 import {
   CheckCircleFilled,
   DownOutlined,
   EnvironmentOutlined,
-  FileSearchOutlined,
-  FileTextOutlined,
   RobotOutlined,
-  ThunderboltFilled,
   UpOutlined,
 } from "@ant-design/icons";
-import type { AIRecommendationEvidenceDetail, AIRecommendationItem } from "@/types/ai-recommendation";
+import RecommendationEvidenceDetailModal, { RecommendationEvidenceIcon } from "./RecommendationEvidenceDetailModal";
+import { getAIConfidenceLevel, getConfidenceCopy } from "@/lib/aiRecommendationRisk";
+import type {
+  AIRecommendationEvidenceDetail,
+  AIRecommendationItem,
+  RecommendationModuleStatus,
+} from "@/types/ai-recommendation";
 
 interface AIRecommendationPopoverProps {
   label: string;
@@ -25,6 +28,9 @@ interface AIRecommendationPopoverProps {
   placement?: "bottomLeft" | "bottomRight" | "rightTop" | "leftTop";
   attention?: boolean;
   defaultOpen?: boolean;
+  status?: RecommendationModuleStatus;
+  appliedId?: string;
+  onUndo?: () => void;
 }
 
 export default function AIRecommendationPopover({
@@ -38,6 +44,9 @@ export default function AIRecommendationPopover({
   placement = "bottomLeft",
   attention = false,
   defaultOpen = false,
+  status = "idle",
+  appliedId,
+  onUndo,
 }: AIRecommendationPopoverProps) {
   const [open, setOpen] = useState(defaultOpen);
   const [expandedId, setExpandedId] = useState<string>();
@@ -51,34 +60,32 @@ export default function AIRecommendationPopover({
           <div className="ai-panel-title">{title}</div>
           <div className="ai-panel-description">{description}</div>
         </div>
-        <Tag color="processing" className="ai-model-tag">AI研判</Tag>
+        <div className="ai-model-actions">
+          {appliedId && onUndo && <Button type="link" size="small" onClick={() => { onUndo(); setOpen(false); }}>撤销</Button>}
+        </div>
       </div>
 
       <div className="ai-recommendation-list">
         {items.map((item, index) => {
           const expanded = expandedId === item.id;
+          const applied = appliedId === item.id && status !== "stale";
+          const confidenceLevel = getAIConfidenceLevel(item.confidence);
           return (
-            <article key={item.id} className={`ai-recommendation-card ${index === 0 ? "is-best" : ""}`}>
-              <div className="ai-rank">{index + 1}</div>
+            <article key={item.id} className={`ai-recommendation-card ${index === 0 ? "is-best" : ""} ${applied ? "is-applied" : ""}`}>
               <div className="ai-card-content">
                 <div className="ai-card-title-row">
                   <div>
+                    <small className="ai-option-label">{index === 0 ? "首选方案" : `备选方案 ${index + 1}`}</small>
                     <strong>{item.title}</strong>
                     {item.subtitle && <span>{item.subtitle}</span>}
                   </div>
-                  {index === 0 && <Tag color="blue">优先推荐</Tag>}
-                  {item.tag && <Tag>{item.tag}</Tag>}
+                  <small className={`dispatch-ai-confidence-copy is-${confidenceLevel}`}>{getConfidenceCopy(item.confidence)} · {item.confidence}%</small>
                 </div>
-                <div className="ai-confidence-row">
-                  <span>置信度</span>
-                  <Progress percent={item.confidence} size="small" showInfo={false} strokeColor="#2f78d3" />
-                  <strong>{item.confidence}%</strong>
-                </div>
-                <div className="ai-reason"><ThunderboltFilled /> {item.reason}</div>
+                <div className="ai-reason">推荐理由：{item.reason}</div>
 
                 {expanded && (
                   <div className="ai-evidence-panel">
-                    <div className="ai-evidence-title">判断依据与相似案例</div>
+                    <div className="ai-evidence-title">推荐依据</div>
                     {(item.evidence ?? []).map((line, evidenceIndex) => {
                       if (typeof line === "string") {
                         return (
@@ -90,7 +97,7 @@ export default function AIRecommendationPopover({
                       }
                       return (
                         <button type="button" className="ai-evidence-line ai-evidence-detail-button" key={line.id} onClick={() => setEvidenceDetail(line)}>
-                          {line.type === "work-order" ? <FileSearchOutlined /> : <FileTextOutlined />}
+                          <RecommendationEvidenceIcon type={line.type} />
                           <span><strong>{line.title}</strong>{line.summary}</span>
                           <em>查看详情</em>
                         </button>
@@ -121,14 +128,16 @@ export default function AIRecommendationPopover({
                     </Button>
                   )}
                   <Button
-                    type="primary"
+                    type={applied ? "default" : "primary"}
                     size="small"
+                    icon={applied ? <CheckCircleFilled /> : undefined}
+                    disabled={applied}
                     onClick={() => {
                       onApply(item);
                       setOpen(false);
                     }}
                   >
-                    采用推荐
+                    {applied ? "已采用" : "采用推荐"}
                   </Button>
                 </div>
               </div>
@@ -136,7 +145,9 @@ export default function AIRecommendationPopover({
           );
         })}
       </div>
-      <div className="ai-panel-footer">推荐结果仅作辅助，请结合现场情况核验后派单</div>
+      <div className="ai-panel-footer">
+        <span>推荐结果仅作辅助，请结合现场情况核验后派单</span>
+      </div>
     </div>
   );
 
@@ -145,7 +156,7 @@ export default function AIRecommendationPopover({
       <span className="ai-trigger-wrap">
       {attention && <span className="ai-attention-dot" title="AI发现可能需要调整" />}
       <Popover
-        open={open}
+        open={open && !evidenceDetail}
         onOpenChange={setOpen}
         trigger="click"
         placement={placement}
@@ -153,39 +164,12 @@ export default function AIRecommendationPopover({
         overlayClassName="ai-popover-overlay"
         arrow
       >
-        <Button className="ai-trigger-button" size="small" icon={<RobotOutlined />} aria-label={`${label}AI推荐`}>
-          AI推荐
+        <Button className={`ai-trigger-button is-${status}`} size="small" icon={<RobotOutlined />} aria-label={`${label}${status === "stale" ? "需复核" : "AI推荐"}`}>
+          {status === "adopted" || status === "reviewed" ? "AI已采用" : status === "stale" ? "需复核" : status === "manuallyEdited" ? "人工调整" : "AI推荐"}
         </Button>
       </Popover>
       </span>
-      <Modal
-        className="evidence-detail-modal"
-        open={Boolean(evidenceDetail)}
-        title={<span>{evidenceDetail?.type === "work-order" ? <FileSearchOutlined /> : <FileTextOutlined />} {evidenceDetail?.type === "work-order" ? "历史工单详情" : "规则文件详情"}</span>}
-        width={620}
-        footer={<Button type="primary" onClick={() => setEvidenceDetail(undefined)}>关闭</Button>}
-        onCancel={() => setEvidenceDetail(undefined)}
-      >
-        {evidenceDetail && (
-          <div className="evidence-detail-content">
-            <div className="evidence-detail-heading">
-              <div>
-                <strong>{evidenceDetail.title}</strong>
-                <span>{evidenceDetail.summary}</span>
-              </div>
-              <Tag color={evidenceDetail.type === "work-order" ? "blue" : "gold"}>{evidenceDetail.type === "work-order" ? "历史工单" : "规则文件"}</Tag>
-            </div>
-            <div className="evidence-detail-source">数据来源：{evidenceDetail.source}</div>
-            <div className="evidence-detail-metadata">
-              {evidenceDetail.metadata.map((value) => <span key={value}>{value}</span>)}
-            </div>
-            <div className="evidence-detail-body">
-              <strong>{evidenceDetail.type === "work-order" ? "案件与处置摘要" : "规则内容"}</strong>
-              <p>{evidenceDetail.content}</p>
-            </div>
-          </div>
-        )}
-      </Modal>
+      <RecommendationEvidenceDetailModal detail={evidenceDetail} onClose={() => setEvidenceDetail(undefined)} />
     </>
   );
 }

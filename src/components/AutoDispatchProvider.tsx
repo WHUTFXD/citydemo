@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useReducer, useState } from "react";
+import { getAIConfidenceLevel } from "@/lib/aiRecommendationRisk";
 import { autoDispatchScenario } from "@/lib/autoDispatchScenario";
 import type { AutoDispatchPhase, AutoDispatchRuntimeItem } from "@/types/auto-dispatch";
 
@@ -59,8 +60,9 @@ function reducer(state: AutoDispatchState, action: AutoDispatchAction): AutoDisp
   }
   if (action.type === "RESOLVE") {
     const scenarioItem = autoDispatchScenario.items[action.scenarioIndex];
+    const requiresManual = scenarioItem.outcome === "needs-manual" || getAIConfidenceLevel(scenarioItem.addressConfidence) === "manualRequired";
     const items = state.items.map((item) => item.scenarioIndex === action.scenarioIndex && item.state === "analyzing"
-      ? { ...item, state: scenarioItem.outcome === "needs-manual" ? "needsManual" as const : "autoDispatched" as const }
+      ? { ...item, state: requiresManual ? "needsManual" as const : "autoDispatched" as const }
       : item);
     const done = state.nextIndex >= autoDispatchScenario.items.length && !items.some((item) => item.state === "analyzing");
     return { ...state, items, phase: done ? "completed" : state.phase };
@@ -82,6 +84,7 @@ interface AutoDispatchContextValue extends AutoDispatchState {
   autoDispatchedCount: number;
   needsManualCount: number;
   manuallyResolvedCount: number;
+  now: number;
   toggle: (enabled: boolean) => void;
   replay: () => void;
   resolveManual: (orderId: string) => void;
@@ -93,11 +96,13 @@ export function AutoDispatchProvider({ children }: { children: React.ReactNode }
   const [state, dispatch] = useReducer(reducer, initialState);
   const [clock, setClock] = useState(() => Date.now());
 
+  const hasPendingManual = state.items.some((item) => item.state === "needsManual");
+
   useEffect(() => {
-    if (state.phase !== "running") return;
+    if (state.phase !== "running" && !hasPendingManual) return;
     const ticker = window.setInterval(() => setClock(Date.now()), 250);
     return () => window.clearInterval(ticker);
-  }, [state.phase]);
+  }, [hasPendingManual, state.phase]);
 
   useEffect(() => {
     if (state.phase !== "running" || state.nextArrivalAt === null || state.nextIndex >= autoDispatchScenario.items.length) return;
@@ -123,6 +128,7 @@ export function AutoDispatchProvider({ children }: { children: React.ReactNode }
     autoDispatchedCount: state.items.filter((item) => item.state === "autoDispatched").length,
     needsManualCount: state.items.filter((item) => item.state === "needsManual").length,
     manuallyResolvedCount: state.items.filter((item) => item.state === "manuallyResolved").length,
+    now: clock,
     toggle: (enabled) => {
       const now = Date.now();
       setClock(now);
