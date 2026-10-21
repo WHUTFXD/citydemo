@@ -96,3 +96,5 @@ npm run build
 本地验证部署构建：`npm run build:pages`，默认子路径 `/citydemo`，产物为 `out/`。其他子路径可通过 `NEXT_PUBLIC_BASE_PATH` 指定。常规 `npm run build` / `npm run start` 保留 Next.js 服务端预览。
 
 详情页会预生成所有预设工单和自动派单演示工单，查询参数由浏览器读取，保留人工干预及自动打开地址面板的行为。线上演示的新增口径、模板、导入数据等仍仅保存在访问者自己的浏览器中，不会修改 GitHub 仓库或同步给其他团队成员。地图不上传本地密钥，未配置时沿用示意地图。
+
+生产与Pages构建使用Webpack编译Excel导入、导出的后台Worker，避免将TypeScript源码作为静态资源直接交给浏览器；静态产物目录不参与后续源码类型检查。
