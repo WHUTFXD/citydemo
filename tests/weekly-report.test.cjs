@@ -4,6 +4,8 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const engine = require('../.qa/weeklyReport.js');
 const exporter = require('../.qa/weeklyReportExport.js');
+const platform = require('../.qa/metricPlatform.js');
+const definitions = require('../.qa/indicatorDefinitions.js');
 const ExcelJS = require('exceljs');
 const scope = { start: '2026-04-20', end: '2026-04-26', channel: '12345热线' };
 const data = engine.getMockOrders();
@@ -116,4 +118,86 @@ test('Word生成有效OOXML，导出当前版本与选定板块', async () => {
   assert.ok(!xml.includes('本期暂未录入经核实的领导批示'));
   await fs.mkdir(path.join(__dirname, '../.qa/artifacts'), { recursive: true });
   await fs.writeFile(path.join(__dirname, '../.qa/artifacts/周报示例.docx'), bytes);
+});
+
+test('指标维护只包含定义和符号公式，不依赖日期或实际计算结果', () => {
+  const items = definitions.defaultIndicatorDefinitions();
+  assert.equal(items.length, 10);
+  assert.ok(items.every(d => !('value' in d) && !('numerator' in d) && !('denominator' in d) && !('scope' in d)));
+  assert.equal(definitions.nextIndicatorCode(items), 'MH-009');
+  assert.ok(definitions.definitionFormula(items.find(d => d.kind === 'share')).includes('同期统计范围内工单总量'));
+});
+test('新增、编辑、停用、启用定义，保留编号并提升口径版本', () => {
+  const initial = definitions.defaultIndicatorDefinitions();
+  const custom = { ...initial[0], name: '行道树工单量', code: 'mh-009', category: '行道树', group: '行道树', description: '按受理时间统计行道树诉求，按唯一工单编号去重。' };
+  let saved = definitions.saveIndicatorDefinition(initial, custom);
+  assert.equal(saved.length, 11); const added = saved.at(-1);
+  assert.equal(added.code, 'MH-009'); assert.equal(added.builtin, false); assert.equal(added.version, 1);
+  saved = definitions.saveIndicatorDefinition(saved, { ...added, description: '更新后的统计口径说明', enabled: false }, added.id);
+  assert.equal(saved.at(-1).enabled, false); assert.equal(saved.at(-1).version, 2);
+  assert.equal(saved.at(-1).description, '更新后的统计口径说明');
+  saved = definitions.saveIndicatorDefinition(saved, { ...saved.at(-1), enabled: true }, added.id);
+  assert.equal(saved.at(-1).enabled, true); assert.equal(saved.at(-1).version, 3);
+  assert.deepEqual(definitions.restoreIndicatorDefinitions(JSON.stringify(saved)), saved);
+});
+test('指标定义拒绝重复、空口径和无效计算规则，损坏存储可恢复默认', () => {
+  const items = definitions.defaultIndicatorDefinitions();
+  assert.throws(() => definitions.saveIndicatorDefinition(items, { ...items[0], name: '新名称' }), /编号已存在/);
+  assert.throws(() => definitions.saveIndicatorDefinition(items, { ...items[0], code: 'MH-009' }), /名称已存在/);
+  assert.throws(() => definitions.saveIndicatorDefinition(items, { ...items[0], description: '' }, items[0].id));
+  assert.throws(() => definitions.saveIndicatorDefinition(items, { ...items[0], code: 'MH-099' }, items[0].id), /不能修改/);
+  assert.throws(() => definitions.saveIndicatorDefinition(items, { ...items[0], kind: 'change', period: 'previous' }, items[0].id));
+  assert.equal(definitions.restoreIndicatorDefinitions('invalid json').length, 10);
+  assert.equal(definitions.restoreIndicatorDefinitions('[{"code":"BAD"}]').length, 10);
+});
+const disputes = require('../.qa/metricDisputes.js');
+test('异议提交保存统计快照，不改变指标值；拒绝空原因和重复未处理申报', () => {
+  const a = engine.analyze(scope), token = engine.registerMetric(a, 'count'), m = a.metrics[token.metricId];
+  const before = JSON.stringify(m);
+  assert.throws(() => disputes.submitMetricDispute([], a, m, '   ', 'bad'), /异议原因/);
+  const records = disputes.submitMetricDispute([], a, m, '  怀疑重复计数  ', 'test-1');
+  assert.equal(records[0].reason, '怀疑重复计数'); assert.equal(records[0].status, 'pending');
+  assert.equal(JSON.stringify(m), before);
+  assert.throws(() => disputes.submitMetricDispute(records, a, m, '再提交', 'test-2'), /已有待处理/);
+  const other = engine.analyze({ ...scope, channel: '全渠道' }), otherToken = engine.registerMetric(other, 'count');
+  assert.equal(disputes.submitMetricDispute(records, other, other.metrics[otherToken.metricId], '不同渠道', 'test-2').length, 2);
+  const savedValue = records[0].metric.value; m.value = 999;
+  assert.equal(records[0].metric.value, savedValue); assert.equal(records[0].scope.start, scope.start);
+});
+test('管理员处理状态与回复保留在会话中，结束后允许重新申报，历史数值不变', () => {
+  const a = engine.analyze(scope), token = engine.registerMetric(a, 'daily'), m = a.metrics[token.metricId];
+  let records = disputes.submitMetricDispute([], a, m, '请检查统计天数', 'test-3');
+  assert.throws(() => disputes.handleMetricDispute(records, 'test-3', 'resolved', ' '), /处理说明/);
+  records = disputes.handleMetricDispute(records, 'test-3', 'processing', '正在核对明细');
+  assert.equal(disputes.disputesFor(records, a, m)[0].status, 'processing');
+  records = disputes.handleMetricDispute(records, 'test-3', 'resolved', '已确认按完整自然日计算，无需调整');
+  assert.equal(records[0].history.length, 3); assert.equal(records[0].metric.value, m.value);
+  assert.equal(disputes.isOpenDispute(records[0]), false);
+  assert.throws(() => disputes.handleMetricDispute(records, 'test-3', 'processing', '再改'), /已结束/);
+  assert.equal(disputes.submitMetricDispute(records, a, m, '补充新证据', 'test-4').length, 2);
+  const rejected = disputes.handleMetricDispute(disputes.submitMetricDispute([], a, m, '测试异议', 'test-5'), 'test-5', 'rejected', '核查后口径符合定义');
+  assert.equal(rejected[0].status, 'rejected');
+});
+test('板块文字确认无需逐个核验数字，改写后新版本仍需确认', () => {
+  const a = engine.analyze(scope), section = engine.generateReport(a, ['行道树'], false).sections[1];
+  assert.equal(platform.sectionVerified(section), false);
+  section.versions[0].verified = true; assert.equal(platform.sectionVerified(section), true);
+  section.versions.push(engine.buildVersion(a, section.id, section.category, 2, ['精简表达'])); section.active = 1;
+  assert.equal(platform.sectionVerified(section), false);
+});
+test('重写对照可还原左右原文，候选内容不会自动改变已采用版本', () => {
+  const a = engine.analyze(scope), report = engine.generateReport(a, ['行道树'], false), section = report.sections[1];
+  const before = platform.versionText(section.versions[0], a);
+  const candidate = engine.buildVersion(a, section.id, section.category, 2, ['精简表达', '加强建议']);
+  const after = platform.versionText(candidate, a), parts = platform.diffText(before, after);
+  assert.equal(parts.filter(p => p.kind !== 'added').map(p => p.text).join(''), before);
+  assert.equal(parts.filter(p => p.kind !== 'removed').map(p => p.text).join(''), after);
+  assert.ok(parts.some(p => p.kind === 'added')); assert.ok(parts.some(p => p.kind === 'removed'));
+  assert.equal(section.versions.length, 1); assert.equal(section.active, 0);
+  assert.deepEqual(platform.diffText('同一段文字', '同一段文字'), [{ kind: 'same', text: '同一段文字' }]);
+  for (const [l, r] of [['', '新增'], ['删除', ''], ['abc', 'xyz'], ['🙂你好', '🙂你们好']]) {
+    const d = platform.diffText(l, r);
+    assert.equal(d.filter(p => p.kind !== 'added').map(p => p.text).join(''), l);
+    assert.equal(d.filter(p => p.kind !== 'removed').map(p => p.text).join(''), r);
+  }
 });

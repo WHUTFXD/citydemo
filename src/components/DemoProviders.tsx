@@ -3,6 +3,7 @@
 import { App, ConfigProvider } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import { AutoDispatchProvider } from "./AutoDispatchProvider";
+import { WeeklyWorkspaceProvider } from './WeeklyWorkspaceProvider';
 
 export default function DemoProviders({ children }: { children: React.ReactNode }) {
   return (
@@ -26,7 +27,7 @@ export default function DemoProviders({ children }: { children: React.ReactNode 
         },
       }}
     >
-      <App><AutoDispatchProvider>{children}</AutoDispatchProvider></App>
+      <App><AutoDispatchProvider><WeeklyWorkspaceProvider>{children}</WeeklyWorkspaceProvider></AutoDispatchProvider></App>
     </ConfigProvider>
   );
 }
