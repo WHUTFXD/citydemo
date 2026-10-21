@@ -1,17 +1,20 @@
-import OrderDetailPage from "@/components/OrderDetailPage";
+import { Suspense } from "react";
+import OrderDetailRoute from "@/components/OrderDetailRoute";
 import { getAIRecommendationsByOrderId } from "@/lib/aiRecommendations";
-import { getOrderById } from "@/lib/orders";
+import { getOrderById, getOrders } from "@/lib/orders";
+import { autoDispatchScenario } from "@/lib/autoDispatchScenario";
 import { notFound } from "next/navigation";
+
+export function generateStaticParams() {
+  return [...new Set([...getOrders().map(order => order.id), ...autoDispatchScenario.items.map(item => item.order.id)])].map(id => ({ id }));
+}
 
 export default async function OrderPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ focus?: string; source?: string }>;
 }) {
   const { id } = await params;
-  const query = await searchParams;
   const order = getOrderById(id);
   const recommendations = getAIRecommendationsByOrderId(id);
   if (!order || !recommendations) notFound();
@@ -20,12 +23,10 @@ export default async function OrderPage({
     securityCode: process.env.NEXT_PUBLIC_AMAP_SECURITY_CODE ?? "",
   };
   return (
-    <OrderDetailPage
+    <Suspense fallback={<p style={{ padding: 24 }}>正在加载工单详情…</p>}><OrderDetailRoute
       order={order}
       recommendations={recommendations}
       mapConfig={mapConfig}
-      autoDispatchIntervention={query.source === "auto-dispatch"}
-      initialAddressRecommendationOpen={query.focus === "address"}
-    />
+    /></Suspense>
   );
 }

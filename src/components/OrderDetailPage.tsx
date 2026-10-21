@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   App,
@@ -388,7 +389,7 @@ export default function OrderDetailPage({
         <div className="detail-tabs">
           <span className="active">核验派单</span>
           <button type="button" onClick={() => setMapOpen(true)}>GIS地图</button>
-          <a className="open-ai-workbench" href="/ai-workbench" target="_blank" rel="noopener noreferrer" title="在新窗口打开预设示例工单的 AI 辅助派单页面"><RobotOutlined /> 打开 AI 辅助派单演示</a>
+          <Link className="open-ai-workbench" href="/ai-workbench" target="_blank" rel="noopener noreferrer" title="在新窗口打开预设示例工单的 AI 辅助派单页面"><RobotOutlined /> 打开 AI 辅助派单演示</Link>
         </div>
 
         {autoDispatchIntervention && (
