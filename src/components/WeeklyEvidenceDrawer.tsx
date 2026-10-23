@@ -78,7 +78,7 @@ export default function WeeklyEvidenceDrawer({ analysis: a, metric, onClose, con
     catch { message.error('导入模板下载失败，请重试'); }
     finally { setBusy(''); }
   }
-  return <><Drawer title={<span>数据核验 <Tag color="blue">明细依据 · 本地演示</Tag></span>} open onClose={onClose} size={Math.min(1040, typeof window === 'undefined' ? 1040 : window.innerWidth - 24)} className="weekly-evidence" extra={<Button icon={<DownloadOutlined />} loading={busy === 'full'} disabled={!!busy} onClick={() => exportExcel(true)}>{busy === 'full' ? '正在生成 Excel…' : '导出完整指标依据'}</Button>}>
+  return <><Drawer title="数据核验" open onClose={onClose} size={Math.min(1040, typeof window === 'undefined' ? 1040 : window.innerWidth - 24)} className="weekly-evidence" extra={<Button icon={<DownloadOutlined />} loading={busy === 'full'} disabled={!!busy} onClick={() => exportExcel(true)}>{busy === 'full' ? '正在生成 Excel…' : '导出完整指标依据'}</Button>}>
     <div className="evidence-metric"><div><span>{metric.label}</span><strong>{metricText(metric)}<small>{metric.kind === 'count' ? '件' : metric.kind === 'daily' ? '件/天' : ''}</small></strong></div><div>{activeDispute && <Tag color="orange">异议{DISPUTE_STATUS[activeDispute.status]}</Tag>}<Tag color={a.comparisonComplete ? 'green' : 'orange'}>{a.comparisonComplete ? '比较期完整' : '比较期不完整'}</Tag></div></div>
     {contextNote && <Alert type="info" showIcon title="词云核验口径" description={contextNote} style={{ marginBottom: 16 }} />}
     <Descriptions size="small" bordered column={2} items={[
@@ -92,17 +92,17 @@ export default function WeeklyEvidenceDrawer({ analysis: a, metric, onClose, con
       { key: 'round', label: '统计口径', children: '按上海时间完整自然日、唯一工单编号去重。日均及百分比保留1位小数，计算使用原始精度。', span: 2 },
     ]} />
     <div className="metric-review-form"><div className="metric-review-heading"><strong>对这个数字有异议？</strong><span>无异议无需填报</span></div>
-      <p className="weekly-muted">填写原因后提交给管理员，申报会保留当前数值、日期范围和统计口径。</p>
+
       {activeDispute ? <p><Tag color="orange">{DISPUTE_STATUS[activeDispute.status]}</Tag>已有申报正在处理，无需重复提交。</p> : <>
         <Input.TextArea aria-label="异议原因" value={reason} onChange={e => setReason(e.target.value)} maxLength={500} showCount autoSize={{ minRows: 2, maxRows: 4 }} placeholder="例如：部分工单可能重复计入，请核查去重规则。" />
-        <div className="metric-review-bottom"><span>仅本次会话有效，F5 刷新后申报及回复自动清空</span><Button type="primary" disabled={!storageReady} onClick={() => {
-          try { submitDispute(a, metric, reason); setReason(''); message.success('已提交至指标台管理员待办（本地演示）'); }
+        <div className="metric-review-bottom"><span>刷新后清空申报及回复</span><Button type="primary" disabled={!storageReady} onClick={() => {
+          try { submitDispute(a, metric, reason); setReason(''); message.success('异议已提交'); }
           catch (error) { message.warning((error as Error).message); }
         }}>提交异议</Button></div>
       </>}
       {records.map(record => <div key={record.id} style={{ borderTop: '1px solid #e5eaf2', marginTop: 16, paddingTop: 12 }}><p><Tag color={isOpenDispute(record) ? 'orange' : 'default'}>{DISPUTE_STATUS[record.status]}</Tag>{new Date(record.submittedAt).toLocaleString('zh-CN')} · {record.reason}</p>{record.history.filter(h => h.response).map((h, i) => <p className="weekly-muted" key={i}>管理员 · {DISPUTE_STATUS[h.status]}：{h.response}</p>)}</div>)}
     </div>
-    <div className="report-import-box"><Alert type="info" showIcon title="上传Excel，自动更新数据" description="按工单编号更新同号记录，新编号补入；不删除未上传记录。校验通过后自动重算全部指标、热点和报告，并重置改写版本。仅本次会话有效，刷新恢复模拟数据。" /><Space wrap style={{ marginTop: 12 }}><Upload accept=".xlsx" showUploadList={false} beforeUpload={upload} disabled={!!busy}><Button type="primary" icon={<UploadOutlined />} loading={busy === 'upload'} disabled={!!busy}>{busy === 'upload' ? '正在校验并重算…' : '上传 Excel 更新数据'}</Button></Upload><Button loading={busy === 'template'} disabled={!!busy} onClick={downloadTemplate}>下载导入模板</Button></Space></div>
+    <div className="report-import-box"><Alert type="info" showIcon title="上传Excel，自动更新数据" description="按编号更新或补入，保留文件外工单。刷新后恢复样例数据。" /><Space wrap style={{ marginTop: 12 }}><Upload accept=".xlsx" showUploadList={false} beforeUpload={upload} disabled={!!busy}><Button type="primary" icon={<UploadOutlined />} loading={busy === 'upload'} disabled={!!busy}>{busy === 'upload' ? '正在校验并重算…' : '上传 Excel 更新数据'}</Button></Upload><Button loading={busy === 'template'} disabled={!!busy} onClick={downloadTemplate}>下载导入模板</Button></Space></div>
     <div className="evidence-controls">
       <Radio.Group value={period} onChange={e => { setPeriod(e.target.value); setPage(1); }} optionType="button" options={[{ label: `本期明细（${a.current.filter(o => matches(o, metric.filter)).length}）`, value: 'current' }, { label: `对比期明细（${a.previous.filter(o => matches(o, metric.filter)).length}）`, value: 'previous' }]} />
       {metric.kind === 'share' && <Radio.Group value={basis} onChange={e => { setBasis(e.target.value); setPage(1); }} options={[{ label: '分子：匹配指标', value: 'numerator' }, { label: '分母：口径总量', value: 'denominator' }]} />}
@@ -113,7 +113,7 @@ export default function WeeklyEvidenceDrawer({ analysis: a, metric, onClose, con
       <Select aria-label="筛选街镇" placeholder="全部街镇" allowClear value={street} options={[...new Set(evidence.map(o => o.street))].sort().map(value => ({ value, label: value }))} onChange={v => { setStreet(v); setPage(1); }} />
       <Select aria-label="筛选分类" placeholder="全部分类" allowClear value={category} options={[...new Set(evidence.map(o => o.category))].map(value => ({ value, label: value }))} onChange={v => { setCategory(v); setPage(1); }} />
     </div>
-    {metric.filter.semantic && <Alert type={pending ? 'warning' : 'info'} showIcon title={`待人工核对 ${pending} 条，已置顶高亮，暂不计入当前数字`} description={<span>此抽屉保留当前数字对应的口径快照。人工调整后请重新生成报告，避免混用新旧统计。<Button type="link" onClick={() => setReviewOpen(true)}>核对主题归属</Button></span>} />}
+    {metric.filter.semantic && <Alert type={pending ? 'warning' : 'info'} showIcon title={`待核对 ${pending} 条，暂未计入`} description={<span>人工调整后请重新生成报告。<Button type="link" onClick={() => setReviewOpen(true)}>核对主题归属</Button></span>} />}
     <div className="evidence-count"><span>{range.start} 至 {range.end} · 共 <b>{filtered.length}</b> 条匹配记录</span><Button size="small" icon={<DownloadOutlined />} loading={busy === 'filtered'} disabled={!!busy} onClick={() => exportExcel(false)}>导出当前筛选结果</Button></div>
     <Table<Order> rowClassName={o => assessOrder(o, metric.filter).state === 'pending' ? 'theme-pending-row' : ''} rowKey="id" size="small" dataSource={filtered.slice((page - 1) * size, page * size)} scroll={{ x: 980 }} pagination={{ current: page, pageSize: size, total: filtered.length, showSizeChanger: true, pageSizeOptions: [20, 50, 100], showTotal: total => `共 ${total} 条`, onChange: (p, s) => { setPage(p); setSize(s); } }} locale={{ emptyText: <Empty description="当前条件下无工单" /> }} columns={[
       ...(metric.filter.semantic ? [{ title: '主题命中依据', key: 'themeReason', width: 220, render: (_: unknown, order: Order) => themeMatchReason(metric.filter.semantic!, order) }] : []),
@@ -123,7 +123,7 @@ export default function WeeklyEvidenceDrawer({ analysis: a, metric, onClose, con
       { title: '分类', dataIndex: 'category', width: 120 }, { title: '街镇', dataIndex: 'street', width: 110 },
       { title: '点位', dataIndex: 'point', width: 240 }, { title: '诉求摘要', dataIndex: 'description', width: 300 },
     ]} />
-    <p className="weekly-muted">Excel 导出不受当前页码限制。完整指标依据包含两期口径明细及可复算公式；筛选导出仅包含当前筛选记录。</p>
+    <p className="weekly-muted">导出包含所有分页；筛选导出仅含当前筛选结果。</p>
     <Modal open={!!detail} title="模拟工单详情" onCancel={() => setDetail(undefined)} footer={<Space><Button onClick={() => setDetail(undefined)}>关闭</Button></Space>} width={650}>
       {detail && <Descriptions bordered column={1} size="small" items={[
         { key: 'id', label: '唯一工单编号', children: detail.id }, { key: 'date', label: '受理时间', children: detail.receivedAt },

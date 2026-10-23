@@ -204,5 +204,4 @@ body:has(.briefing-shell), body:has(.briefing-login) { min-width: 0; }
   .briefing-shell-workspace .briefing-page-heading { margin-bottom: 10px; }
   .briefing-shell-workspace .briefing-flow { margin-bottom: 10px; padding-block: 10px; }
   .briefing-shell-workspace .briefing-analysis-heading h2 { font-size: 15px; margin-bottom: 2px; }
-  .briefing-shell-workspace .briefing-source-toggle > span:first-child { display: none; }
 }
