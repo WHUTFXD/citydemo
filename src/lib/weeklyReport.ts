@@ -1,27 +1,30 @@
+import { sampleTaxonomy, inferScene } from './workOrderTaxonomy';
 import { themeMatch, type ThemeRule } from './themeMatching';
 export const DATA_START = '2026-03-01';
 export const DATA_END = '2026-05-31';
-export const CATEGORIES = ['教育', '市容市貌', '行道树', '公共区域吸烟', '物业管理', '噪声扰民', '交通出行', '公共设施'] as const;
-export type Category = typeof CATEGORIES[number];
+export const CATEGORIES = ['教育', '市容市貌', '行道树', '公共区域吸烟', '物业管理', '噪声扰民', '交通出行', '公共设施', '公建配套'] as const;
+export type Category = typeof CATEGORIES[number] | (string & {});
 export type Channel = '12345热线' | '全渠道';
-export type Order = { id: string; receivedAt: string; channel: string; business: string; category: Category; street: string; point: string; department: string; description: string };
+export type Order = { id: string; receivedAt: string; channel: string; business: string; category: Category; street: string; point: string; department: string; description: string; cityCategory4?: string; districtCategory?: string; districtSubcategory?: string; issueType?: string; scene?: string };
 export type Scope = { start: string; end: string; channel: Channel };
-export type MetricFilter = { category?: Category; point?: string; business?: string; channel?: string; keyword?: string; semantic?: ThemeRule };
+export type DataCoverage = { start: string; end: string; maxDays?: number };
+export type MetricFilter = { cityCategory4?: string; districtCategory?: string; districtSubcategory?: string; issueType?: string; scene?: string; textGroups?: string[][]; reviewOverrides?: Record<string, 'include' | 'exclude'>; category?: Category; point?: string; business?: string; channel?: string; keyword?: string; semantic?: ThemeRule };
 export type Metric = { id: string; label: string; kind: 'count' | 'daily' | 'share' | 'change'; period: 'current' | 'previous'; filter: MetricFilter; value: number | null; numerator: number; denominator: number; formula: string; definitionId?: string; definitionCode?: string; definitionVersion?: number; definitionDescription?: string };
 export type Topic = { category: Category; count: number; previous: number; growth: number | null; share: number; concentration: number; points: { point: string; street: string; count: number }[]; score: number; reasons: string[] };
-export type Analysis = { scope: Scope; previousScope: Scope; days: number; comparisonComplete: boolean; current: Order[]; previous: Order[]; topics: Topic[]; previousTopics: Topic[]; metrics: Record<string, Metric>; key: string; dataRevision?: number };
+export type Analysis = { scope: Scope; previousScope: Scope; days: number; comparisonComplete: boolean; current: Order[]; previous: Order[]; topics: Topic[]; previousTopics: Topic[]; metrics: Record<string, Metric>; key: string; dataRevision?: number; coverage?: DataCoverage; dataLabel?: string; dataKind?: 'sample' | 'imported' | 'mixed' };
 export type Token = string | { metricId: string };
 export type RewriteMode = '精简表达' | '突出环比' | '强调点位' | '加强建议';
 export const REWRITE_MODES: RewriteMode[] = ['精简表达', '突出环比', '强调点位', '加强建议'];
 export type SectionVersion = { number: number; paragraphs: Token[][]; table?: { headers: string[]; rows: Token[][][] }; verified: boolean; modes: RewriteMode[] };
 export type ReportSection = { id: string; title: string; category?: Category; versions: SectionVersion[]; active: number; recipe?: import('./reportTemplates').SectionRecipe };
-export type Report = { analysis: Analysis; sections: ReportSection[]; title: string; createdAt: string; templateSnapshot?: import('./reportTemplates').ReportTemplate; definitionSnapshot?: import('./indicatorDefinitions').IndicatorDefinition[]; themes?: import('./reportTemplates').ReportTheme[]; configurationKey?: string; dataRevision?: number };
+export type Report = { cadence?: 'on-demand' | 'daily'; analysis: Analysis; sections: ReportSection[]; title: string; createdAt: string; templateSnapshot?: import('./reportTemplates').ReportTemplate; definitionSnapshot?: import('./indicatorDefinitions').IndicatorDefinition[]; themes?: import('./reportTemplates').ReportTheme[]; configurationKey?: string; dataRevision?: number };
 export const shiftDate = (date: string, days: number) => new Date(Date.parse(date + 'T00:00:00Z') + days * 86400000).toISOString().slice(0, 10);
 export const dayCount = (start: string, end: string) => Math.round((Date.parse(end) - Date.parse(start)) / 86400000) + 1;
-export function validateScope(scope: Scope) {
+export function validateScope(scope: Scope, coverage: DataCoverage = { start: DATA_START, end: DATA_END }) {
   const days = dayCount(scope.start, scope.end);
-  if (!Number.isFinite(days) || days < 1 || days > 31) throw new Error('请选择连续 1–31 天的日期范围');
-  if (scope.start < DATA_START || scope.end > DATA_END) throw new Error('模拟数据覆盖 2026 年 3 月 1 日至 5 月 31 日');
+  for (const date of [scope.start, scope.end]) if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(Date.parse(date)) || new Date(date).toISOString().slice(0, 10) !== date) throw new Error('请选择有效的自然日期');
+  if (!Number.isFinite(days) || days < 1 || days > (coverage.maxDays || 31)) throw new Error(`请选择连续1—${coverage.maxDays || 31}天的日期范围`);
+  if (scope.start < coverage.start || scope.end > coverage.end) throw new Error(`数据覆盖${coverage.start}至${coverage.end}，请调整统计周期或导入数据`);
   return days;
 }
 const STREETS = ['七宝镇', '莘庄镇', '浦江镇', '浦锦街道', '梅陇镇', '颛桥镇', '虹桥镇', '吴泾镇'];
@@ -29,10 +32,11 @@ const POINTS: Record<Category, string[]> = {
   教育: ['尚德坤庭幼儿园周边', '明强小学周边', '某招生服务窗口', '社区教育服务点'],
   市容市貌: ['鲁宁路沿线', '黎安路沿线', '沈杜公路地铁站周边', '沿街商铺集中区'],
   行道树: ['静安新城片区道路', '莘松路沿线', '社区主干道', '居民区周边道路'],
-  公共区域吸烟: ['小区楼道', '居民楼电梯厅', '小区入户厅', '公共服务场所入口'],
+  公共区域吸烟: ['小区楼道', '居民楼电梯厅', '沿街餐厅', '公共服务场所入口'],
   物业管理: ['某住宅小区公共区域', '社区停车场', '居民楼公共设施', '小区物业服务点'],
   噪声扰民: ['沿街商业区域', '住宅小区北门', '社区活动场地', '道路施工区域'],
   交通出行: ['地铁站出入口', '公交站点', '学校周边道路', '社区出入口'],
+  公建配套: ['社区长者食堂', '社区公共配套服务点', '社区助餐点', '居民服务中心'],
   公共设施: ['社区公共活动区', '人行道沿线', '公共厕所周边', '健身设施区域'],
 };
 const FIXED_POINT_STREETS: Record<string, string> = {
@@ -48,6 +52,7 @@ export const TOPIC_COPY: Record<Category, { issues: string[]; advice: string }> 
   物业管理: { issues: ['公共设施维修', '停车管理', '物业服务响应'], advice: '督促物业建立维修与诉求处理台账，明确响应时限，对重复反映的问题开展联合会商。' },
   噪声扰民: { issues: ['商业经营噪声', '施工噪声', '社会生活噪声'], advice: '加强重点时段巡查，核实噪声来源，落实分类处置与沟通反馈，减少对居民休息的影响。' },
   交通出行: { issues: ['非机动车无序停放', '道路通行受阻', '站点秩序问题'], advice: '加强交通节点与社区出入口秩序维护，完善停放引导，对集中点位持续跟踪。' },
+  公建配套: { issues: ['老年人社区食堂餐品质量', '社区食堂价格与优惠', '社区助餐开放时间'], advice: '核实社区食堂服务对象、餐品质量及开放安排，完善助餐服务和群众反馈机制。' },
   公共设施: { issues: ['设施损坏', '照明故障', '公共设施养护'], advice: '开展公共设施安全排查，落实报修、维修、回访闭环，优先处理影响通行与使用安全的问题。' },
 };
 let cachedOrders: Order[] | undefined;
@@ -58,7 +63,7 @@ export function getMockOrders(): Order[] {
   const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
   for (let date = DATA_START, day = 0; date <= DATA_END; date = shiftDate(date, 1), day++) {
     const volume = 1220 + Math.floor(random() * 161), hotline = 365 + Math.floor(random() * 81);
-    const weights = [date >= '2026-04-13' && date <= '2026-04-19' ? 32 : 12, 17, date >= '2026-04-20' && date <= '2026-04-26' ? 31 : 5, date >= '2026-04-20' && date <= '2026-04-26' ? 17 : 2, 18, 12 + Math.floor(day / 14) % 3 * 5, 10, 12];
+    const weights = [date >= '2026-04-13' && date <= '2026-04-19' ? 32 : 12, 17, date >= '2026-04-20' && date <= '2026-04-26' ? 31 : 5, date >= '2026-04-20' && date <= '2026-04-26' ? 17 : 2, 18, 12 + Math.floor(day / 14) % 3 * 5, 10, 12, 6];
     const sum = weights.reduce((a, b) => a + b, 0);
     for (let i = 0; i < volume; i++) {
       let pick = random() * sum, index = 0;
@@ -69,17 +74,25 @@ export function getMockOrders(): Order[] {
       const street = FIXED_POINT_STREETS[POINTS[category][pointIndex]] || STREETS[streetIndex];
       const sampledIssue = TOPIC_COPY[category].issues[Math.floor(random() * 3)];
       const crossCategorySmoking = ['物业管理', '公共设施', '交通出行'].includes(category) && i % 17 === 0;
-      const issue = crossCategorySmoking ? ['公共大厅有人抽烟，二手烟影响通行', '公共区域有明显烟味，希望加强控烟劝阻'][i % 2] : category === '公共区域吸烟' ? `${POINTS[category][pointIndex]}存在吸烟现象` : sampledIssue;
+      const issue = category === '公建配套' && i % 7 === 0 ? '老年人反映附近食堂配套服务不便，是否属于社区助餐有待核实' : crossCategorySmoking ? ['公共大厅有人抽烟，二手烟影响通行', '公共区域有明显烟味，希望加强控烟劝阻'][i % 2] : category === '公共区域吸烟' ? `${POINTS[category][pointIndex]}存在吸烟现象` : sampledIssue;
       const praise = random() < .005;
-      orders.push({ id: `MOCK-${date.replaceAll('-', '')}-${String(i + 1).padStart(4, '0')}`, receivedAt: `${date} ${String(Math.floor(random() * 24)).padStart(2, '0')}:${String(Math.floor(random() * 60)).padStart(2, '0')}:00`, channel: i < hotline ? '12345热线' : i % 5 ? '网格巡查' : '其他渠道', business: praise ? '表扬感谢' : i % 9 === 0 ? '咨询' : '投诉求助', category, street, point: `${street}·${POINTS[category][pointIndex]}`, department: `${street}城运中心`, description: praise ? `模拟市民感谢${street}工作人员及时回应${category}相关诉求，沟通耐心、处置及时。` : `模拟市民反映${issue}，点位位于${POINTS[category][pointIndex]}，希望相关单位核实处理。` });
+      const order: Order = { id: `MOCK-${date.replaceAll('-', '')}-${String(i + 1).padStart(4, '0')}`, receivedAt: `${date} ${String(Math.floor(random() * 24)).padStart(2, '0')}:${String(Math.floor(random() * 60)).padStart(2, '0')}:00`, channel: i < hotline ? '12345热线' : i % 5 ? '网格巡查' : '其他渠道', business: praise ? '表扬感谢' : i % 9 === 0 ? '咨询' : '投诉求助', category, street, point: `${street}·${POINTS[category][pointIndex]}`, department: `${street}城运中心`, description: praise ? `模拟市民感谢${street}工作人员及时回应${category}相关诉求，沟通耐心、处置及时。` : `模拟市民反映${issue}，点位位于${POINTS[category][pointIndex]}，希望相关单位核实处理。` };
+      Object.assign(order, sampleTaxonomy(order, sampledIssue));
+      orders.push(order);
     }
   }
   cachedOrders = orders;
   return orders;
 }
-export function matches(order: Order, filter: MetricFilter) { return (!filter.semantic || themeMatch(filter.semantic, order)) && (!filter.category || order.category === filter.category) && (!filter.point || order.point === filter.point) && (!filter.business || order.business === filter.business) && (!filter.channel || order.channel === filter.channel) && (!filter.keyword || [order.description, order.point, order.category].some(value => value.toLowerCase().includes(filter.keyword!.toLowerCase()))); }
+export function matches(order: Order, filter: MetricFilter) {
+  const classification = (!filter.cityCategory4 || order.cityCategory4 === filter.cityCategory4) && (!filter.districtCategory || order.districtCategory === filter.districtCategory) && (!filter.districtSubcategory || order.districtSubcategory === filter.districtSubcategory) && (!filter.issueType || order.issueType === filter.issueType) && (!filter.scene || (order.scene || inferScene(order)) === filter.scene);
+  const text = [order.description, order.point].join(' ').toLowerCase();
+  const basic = classification && (!filter.category || order.category === filter.category) && (!filter.point || order.point === filter.point) && (!filter.business || order.business === filter.business) && (!filter.channel || order.channel === filter.channel) && (!filter.keyword || [order.description, order.point, order.category].some(value => value.toLowerCase().includes(filter.keyword!.toLowerCase()))) && (!filter.textGroups || filter.textGroups.every(words => words.some(word => text.includes(word.toLowerCase()))));
+  const decision = filter.reviewOverrides?.[order.id];
+  return basic && decision !== 'exclude' && (decision === 'include' || !filter.semantic || themeMatch(filter.semantic, order));
+}
 function rankTopics(current: Order[], previous: Order[], complete: boolean): Topic[] {
-  const topics = CATEGORIES.map(category => {
+  const topics = [...new Set([...current, ...previous].map(o => o.category))].map(category => {
     const records = current.filter(o => o.category === category), old = previous.filter(o => o.category === category).length;
     const points = new Map<string, { point: string; street: string; count: number }>();
     records.forEach(o => { const value = points.get(o.point) || { point: o.point, street: o.street, count: 0 }; value.count++; points.set(o.point, value); });
@@ -95,21 +108,21 @@ function rankTopics(current: Order[], previous: Order[], complete: boolean): Top
   });
   return topics.sort((a, b) => b.score - a.score || b.count - a.count);
 }
-export function analyze(scope: Scope, source = getMockOrders()): Analysis {
-  const days = validateScope(scope), previousScope = { ...scope, start: shiftDate(scope.start, -days), end: shiftDate(scope.start, -1) };
+export function analyze(scope: Scope, source = getMockOrders(), coverage: DataCoverage = { start: DATA_START, end: DATA_END }): Analysis {
+  const days = validateScope(scope, coverage), previousScope = { ...scope, start: shiftDate(scope.start, -days), end: shiftDate(scope.start, -1) };
   const unique = [...new Map(source.map(o => [o.id, o])).values()];
   const select = (s: Scope) => unique.filter(o => o.receivedAt.slice(0, 10) >= s.start && o.receivedAt.slice(0, 10) <= s.end && (s.channel === '全渠道' || o.channel === s.channel));
-  const current = select(scope), previous = select(previousScope), comparisonComplete = previousScope.start >= DATA_START;
+  const current = select(scope), previous = select(previousScope), comparisonComplete = previousScope.start >= coverage.start && previousScope.end <= coverage.end;
   const preceding = select({ ...scope, start: shiftDate(previousScope.start, -days), end: shiftDate(previousScope.start, -1) });
-  return { scope: { ...scope }, previousScope, days, comparisonComplete, current, previous, topics: rankTopics(current, previous, comparisonComplete), previousTopics: rankTopics(previous, preceding, shiftDate(previousScope.start, -days) >= DATA_START), metrics: {}, key: `${scope.start}/${scope.end}/${scope.channel}` };
+  return { coverage, scope: { ...scope }, previousScope, days, comparisonComplete, current, previous, topics: rankTopics(current, previous, comparisonComplete), previousTopics: rankTopics(previous, preceding, shiftDate(previousScope.start, -days) >= coverage.start), metrics: {}, key: `${scope.start}/${scope.end}/${scope.channel}` };
 }
 export function registerMetric(a: Analysis, kind: Metric['kind'], filter: MetricFilter = {}, period: Metric['period'] = 'current'): Token {
-  const id = `${a.key}/${kind}/${period}/${filter.category || '*'}/${filter.point || '*'}/${filter.business || '*'}/${filter.channel || '*'}/${filter.keyword || '*'}/${filter.semantic ? JSON.stringify(filter.semantic) : '*'}`;
+  const id = `${a.key}/${kind}/${period}/${filter.category || '*'}/${filter.point || '*'}/${filter.business || '*'}/${filter.channel || '*'}/${filter.keyword || '*'}/${filter.semantic ? JSON.stringify(filter.semantic) : '*'}/${JSON.stringify([filter.cityCategory4, filter.districtCategory, filter.districtSubcategory, filter.issueType, filter.scene, filter.textGroups, filter.reviewOverrides])}`;
   const base = period === 'current' ? a.current : a.previous;
   const n = base.filter(o => matches(o, filter)).length, old = a.previous.filter(o => matches(o, filter)).length;
   const d = kind === 'change' ? old : kind === 'share' ? base.filter(o => !filter.channel || o.channel === filter.channel).length : kind === 'daily' ? a.days : 1;
   const value = kind === 'change' ? a.comparisonComplete && old > 0 ? (n - old) / old : null : kind === 'count' ? n : d ? n / d : 0;
-  const label = `${filter.category || filter.business || '全部工单'}${filter.point ? ' · ' + filter.point : ''} · ${{ count: '工单量', daily: '日均量', share: '占比', change: '环比' }[kind]}${period === 'previous' ? '（上期）' : ''}`;
+  const label = `${filter.semantic?.topic || filter.districtSubcategory || filter.cityCategory4?.split(' / ').at(-1) || filter.districtCategory || filter.scene || filter.category || filter.business || '全部工单'}${filter.point ? ' · ' + filter.point : ''} · ${{ count: '工单量', daily: '日均量', share: '占比', change: '环比' }[kind]}${period === 'previous' ? '（上期）' : ''}`;
   const formula = kind === 'count' ? `按唯一工单编号去重计数 = ${n}件` : kind === 'daily' ? `${n}件 ÷ ${a.days}天 = ${(n / a.days).toFixed(1)}件/天` : kind === 'share' ? `${n}件 ÷ ${d}件 × 100%` : !a.comparisonComplete ? '比较期覆盖不完整，环比不计算' : old === 0 ? '上期为0，环比不计算' : `(${n} − ${old}) ÷ ${old} × 100%`;
   a.metrics[id] = { id, label, kind, period, filter, value, numerator: n, denominator: d, formula };
   return { metricId: id };

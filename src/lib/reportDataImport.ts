@@ -1,6 +1,8 @@
-import { CATEGORIES, DATA_END, DATA_START, type Order } from './weeklyReport';
+import { type Order } from './weeklyReport';
 
 export const ORDER_COLUMNS = ['唯一工单编号', '受理时间（上海时间）', '渠道', '业务类型', '诉求分类', '街镇', '标准点位', '承办单位', '脱敏诉求摘要'];
+export const OPTIONAL_COLUMNS = ['市级四级分类', '区级案件小类', '区级案件子类', '诉求细分', '发生场景'];
+const OPTIONAL_KEYS: (keyof Order)[] = ['cityCategory4', 'districtCategory', 'districtSubcategory', 'issueType', 'scene'];
 const KEYS: (keyof Order)[] = ['id', 'receivedAt', 'channel', 'business', 'category', 'street', 'point', 'department', 'description'];
 export function mergeImportedOrders(source: Order[], rows: Order[]) {
   const map = new Map(source.map(o => [o.id, o])); let updated = 0, added = 0;
@@ -30,11 +32,9 @@ export async function readOrderWorkbook(buffer: ArrayBuffer): Promise<Order[]> {
       });
       const order = Object.fromEntries(KEYS.map((key, i) => [key, values[i]])) as Order;
       if (values.some(v => !v)) throw new Error(`“${sheet.name}”第${index}行存在空字段，请补全9项工单信息`);
-      const date = order.receivedAt.slice(0, 10);
       const parsed = new Date(order.receivedAt.replace(' ', 'T') + '+08:00');
-      if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(order.receivedAt) || !Number.isFinite(parsed.getTime()) || new Date(parsed.getTime() + 8 * 3600000).toISOString().slice(0, 19).replace('T', ' ') !== order.receivedAt || date < DATA_START || date > DATA_END) throw new Error(`“${sheet.name}”第${index}行受理时间无效，演示支持2026年3—5月，格式为YYYY-MM-DD HH:mm:ss`);
-      if (!CATEGORIES.includes(order.category)) throw new Error(`第${index}行诉求分类无效：${order.category}`);
-      if (!['12345热线', '网格巡查', '其他渠道'].includes(order.channel) || !['投诉求助', '咨询', '表扬感谢'].includes(order.business)) throw new Error(`第${index}行渠道或业务类型无效`);
+      if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(order.receivedAt) || !Number.isFinite(parsed.getTime()) || new Date(parsed.getTime() + 8 * 3600000).toISOString().slice(0, 19).replace('T', ' ') !== order.receivedAt) throw new Error(`“${sheet.name}”第${index}行受理时间无效，格式为YYYY-MM-DD HH:mm:ss`);
+      OPTIONAL_COLUMNS.forEach((name, i) => { const column = headers.findIndex(h => h === name); if (column > 0) { const value = row.getCell(column).value; if (value && typeof value === 'object') throw new Error(`第${index}行分类字段不能使用公式或富文本`); const text = String(value || '').trim(); if (text.length > 300) throw new Error(`第${index}行分类字段过长`); if (text) order[OPTIONAL_KEYS[i]] = text as never; } });
       if (ids.has(order.id)) throw new Error(`上传文件存在重复工单编号：${order.id}，请去重后重试`);
       ids.add(order.id); result.push(order);
     });
@@ -44,8 +44,8 @@ export async function readOrderWorkbook(buffer: ArrayBuffer): Promise<Order[]> {
 }
 export async function createImportTemplate(): Promise<Blob> {
   const ExcelJS = await import('exceljs'); const wb = new ExcelJS.Workbook(), sheet = wb.addWorksheet('工单明细');
-  sheet.addRow(ORDER_COLUMNS); sheet.addRow(['DEMO-IMPORT-001', new Date('2026-04-20T09:00:00Z'), '12345热线', '投诉求助', '行道树', '七宝镇', '七宝镇·静安新城片区道路', '七宝镇城运中心', '模拟市民反映枝叶遮挡采光，希望修剪。']);
+  sheet.addRow([...ORDER_COLUMNS, ...OPTIONAL_COLUMNS]); sheet.addRow(['DEMO-IMPORT-001', new Date('2026-10-20T09:00:00Z'), '12345热线', '投诉求助', '行道树', '七宝镇', '七宝镇·静安新城片区道路', '七宝镇城运中心', '模拟市民反映枝叶遮挡采光，希望修剪。', '城市管理 / 绿化管理 / 绿化养护 / 行道树养护', '行道树', '枝叶遮挡', '枝叶遮挡采光', '道路沿线']);
   sheet.getColumn(2).numFmt = 'yyyy-mm-dd hh:mm:ss'; sheet.columns.forEach(c => { c.width = 26; }); sheet.getColumn(9).width = 65;
-  wb.addWorksheet('导入说明').addRows([['规则', '说明'], ['更新方式', '按唯一工单编号更新同号记录，新编号补入；不删除文件未包含的工单。'], ['时间范围', '演示支持2026年3—5月，时间为上海自然时间。'], ['必需字段', '请保留9列表头，不使用合并单元格或原始字段公式；可直接上传核验导出的本期/对比期明细。'], ['保存范围', '上传数据仅当前会话有效，刷新后恢复模拟数据。']]);
+  wb.addWorksheet('导入说明').addRows([['规则', '说明'], ['更新方式', '按唯一工单编号更新同号记录，新编号补入；不删除文件未包含的工单。'], ['时间范围', '支持有效的完整日期，按上海自然时间统计；数据集边界由受理时间识别。'], ['必需字段', '请保留9项必需表头，后5项分类与场景字段可选；未提供的分类不会虚构填充。请，不使用合并单元格或原始字段公式；可直接上传核验导出的本期/对比期明细。'], ['保存范围', '上传数据仅当前会话有效，刷新后恢复模拟数据。']]);
   return new Blob([new Uint8Array(await wb.xlsx.writeBuffer())], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 }

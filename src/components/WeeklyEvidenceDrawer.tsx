@@ -5,14 +5,18 @@ import { App, Button, Descriptions, Drawer, Empty, Input, Modal, Radio, Select, 
 import { DownloadOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons';
 import { matches, metricText, type Analysis, type Metric, type Order } from '@/lib/weeklyReport';
 import { themeMatchReason, themeRuleDescription } from '@/lib/themeMatching';
+import { assessOrder, reviewedRows } from '@/lib/briefingAnalysis';
+import ThemeExplorerDrawer from './ThemeExplorerDrawer';
+import type { ReportTheme } from '@/lib/reportTemplates';
 import { DISPUTE_STATUS, disputesFor, isOpenDispute } from '@/lib/metricDisputes';
 import { useWeeklyWorkspace } from './WeeklyWorkspaceProvider';
 
-export default function WeeklyEvidenceDrawer({ analysis: a, metric, onClose }: { analysis: Analysis; metric: Metric; onClose: () => void }) {
+export default function WeeklyEvidenceDrawer({ analysis: a, metric, onClose, contextNote, theme }: { analysis: Analysis; metric: Metric; onClose: () => void; contextNote?: string; theme?: ReportTheme }) {
   const { message } = App.useApp();
-  const { disputes, submitDispute, storageReady, importOrders } = useWeeklyWorkspace();
+  const { disputes, submitDispute, storageReady, importOrders, customThemes } = useWeeklyWorkspace();
   const records = disputesFor(disputes, a, metric);
   const activeDispute = records.find(isOpenDispute);
+  const [reviewOpen, setReviewOpen] = useState(false);
   const [reason, setReason] = useState('');
   const [period, setPeriod] = useState<'current' | 'previous'>(metric.period);
   const [basis, setBasis] = useState('numerator');
@@ -25,8 +29,10 @@ export default function WeeklyEvidenceDrawer({ analysis: a, metric, onClose }: {
   const importLock = useRef(false);
   const [detail, setDetail] = useState<Order>();
   const source = period === 'current' ? a.current : a.previous;
-  const evidence = useMemo(() => source.filter(o => basis === 'denominator' ? !metric.filter.channel || o.channel === metric.filter.channel : matches(o, metric.filter)), [source, basis, metric]);
+  const evidence = useMemo(() => basis === 'denominator' ? source.filter(o => !metric.filter.channel || o.channel === metric.filter.channel) : reviewedRows(source, metric.filter), [source, basis, metric]);
   const filtered = useMemo(() => evidence.filter(o => (!street || o.street === street) && (!category || o.category === category) && (!search.trim() || [o.id, o.description, o.point, o.department].some(v => v.includes(search.trim())))), [evidence, street, category, search]);
+  const pending = evidence.filter(o => assessOrder(o, metric.filter).state === 'pending').length;
+  const reviewTheme: ReportTheme = theme || customThemes.find(t => t.filter.semantic?.topic === metric.filter.semantic?.topic && !!metric.filter.semantic) || { id: `metric:${metric.id}`, name: metric.filter.semantic?.topic || metric.label, group: '热点事件', custom: true, filter: metric.filter };
   const range = period === 'current' ? a.scope : a.previousScope;
   async function exportExcel(full: boolean) {
     if (busy) return;
@@ -72,13 +78,14 @@ export default function WeeklyEvidenceDrawer({ analysis: a, metric, onClose }: {
     catch { message.error('导入模板下载失败，请重试'); }
     finally { setBusy(''); }
   }
-  return <Drawer title={<span>数据核验 <Tag color="blue">明细依据 · 本地演示</Tag></span>} open onClose={onClose} size={Math.min(1040, typeof window === 'undefined' ? 1040 : window.innerWidth - 24)} className="weekly-evidence" extra={<Button icon={<DownloadOutlined />} loading={busy === 'full'} disabled={!!busy} onClick={() => exportExcel(true)}>{busy === 'full' ? '正在生成 Excel…' : '导出完整指标依据'}</Button>}>
+  return <><Drawer title={<span>数据核验 <Tag color="blue">明细依据 · 本地演示</Tag></span>} open onClose={onClose} size={Math.min(1040, typeof window === 'undefined' ? 1040 : window.innerWidth - 24)} className="weekly-evidence" extra={<Button icon={<DownloadOutlined />} loading={busy === 'full'} disabled={!!busy} onClick={() => exportExcel(true)}>{busy === 'full' ? '正在生成 Excel…' : '导出完整指标依据'}</Button>}>
     <div className="evidence-metric"><div><span>{metric.label}</span><strong>{metricText(metric)}<small>{metric.kind === 'count' ? '件' : metric.kind === 'daily' ? '件/天' : ''}</small></strong></div><div>{activeDispute && <Tag color="orange">异议{DISPUTE_STATUS[activeDispute.status]}</Tag>}<Tag color={a.comparisonComplete ? 'green' : 'orange'}>{a.comparisonComplete ? '比较期完整' : '比较期不完整'}</Tag></div></div>
+    {contextNote && <Alert type="info" showIcon title="词云核验口径" description={contextNote} style={{ marginBottom: 16 }} />}
     <Descriptions size="small" bordered column={2} items={[
       { key: 'scope', label: '本期范围', children: `${a.scope.start} 至 ${a.scope.end}` },
       { key: 'previous', label: '对比范围', children: `${a.previousScope.start} 至 ${a.previousScope.end}` },
       { key: 'channel', label: '统计渠道', children: a.scope.channel },
-      { key: 'filter', label: '指标筛选', children: [metric.filter.category, metric.filter.point, metric.filter.business, metric.filter.channel, metric.filter.keyword ? `关键词：${metric.filter.keyword}` : ''].filter(Boolean).join(' / ') || '全部工单' },
+      { key: 'filter', label: '指标筛选', children: [metric.filter.cityCategory4, metric.filter.districtCategory, metric.filter.districtSubcategory, metric.filter.scene, metric.filter.textGroups?.map(words => words.join('/')).join(' 且 '), metric.filter.category, metric.filter.point, metric.filter.business, metric.filter.channel, metric.filter.keyword ? `关键词：${metric.filter.keyword}` : ''].filter(Boolean).join(' / ') || '全部工单' },
       ...(metric.filter.semantic ? [{ key: 'theme', label: '自定义主题识别', children: themeRuleDescription(metric.filter.semantic), span: 2 }] : []),
       ...(metric.definitionId ? [{ key: 'binding', label: '绑定指标', children: `${metric.definitionCode} · v${metric.definitionVersion}；${metric.definitionDescription}`, span: 2 }] : []),
       { key: 'formula', label: '计算公式', children: metric.formula, span: 2 },
@@ -106,9 +113,11 @@ export default function WeeklyEvidenceDrawer({ analysis: a, metric, onClose }: {
       <Select aria-label="筛选街镇" placeholder="全部街镇" allowClear value={street} options={[...new Set(evidence.map(o => o.street))].sort().map(value => ({ value, label: value }))} onChange={v => { setStreet(v); setPage(1); }} />
       <Select aria-label="筛选分类" placeholder="全部分类" allowClear value={category} options={[...new Set(evidence.map(o => o.category))].map(value => ({ value, label: value }))} onChange={v => { setCategory(v); setPage(1); }} />
     </div>
+    {metric.filter.semantic && <Alert type={pending ? 'warning' : 'info'} showIcon title={`待人工核对 ${pending} 条，已置顶高亮，暂不计入当前数字`} description={<span>此抽屉保留当前数字对应的口径快照。人工调整后请重新生成报告，避免混用新旧统计。<Button type="link" onClick={() => setReviewOpen(true)}>核对主题归属</Button></span>} />}
     <div className="evidence-count"><span>{range.start} 至 {range.end} · 共 <b>{filtered.length}</b> 条匹配记录</span><Button size="small" icon={<DownloadOutlined />} loading={busy === 'filtered'} disabled={!!busy} onClick={() => exportExcel(false)}>导出当前筛选结果</Button></div>
-    <Table<Order> rowKey="id" size="small" dataSource={filtered.slice((page - 1) * size, page * size)} scroll={{ x: 980 }} pagination={{ current: page, pageSize: size, total: filtered.length, showSizeChanger: true, pageSizeOptions: [20, 50, 100], showTotal: total => `共 ${total} 条`, onChange: (p, s) => { setPage(p); setSize(s); } }} locale={{ emptyText: <Empty description="当前条件下无工单" /> }} columns={[
+    <Table<Order> rowClassName={o => assessOrder(o, metric.filter).state === 'pending' ? 'theme-pending-row' : ''} rowKey="id" size="small" dataSource={filtered.slice((page - 1) * size, page * size)} scroll={{ x: 980 }} pagination={{ current: page, pageSize: size, total: filtered.length, showSizeChanger: true, pageSizeOptions: [20, 50, 100], showTotal: total => `共 ${total} 条`, onChange: (p, s) => { setPage(p); setSize(s); } }} locale={{ emptyText: <Empty description="当前条件下无工单" /> }} columns={[
       ...(metric.filter.semantic ? [{ title: '主题命中依据', key: 'themeReason', width: 220, render: (_: unknown, order: Order) => themeMatchReason(metric.filter.semantic!, order) }] : []),
+      ...(metric.filter.semantic ? [{ title: '归属状态', width: 125, render: (_: unknown, o: Order) => <Tag color={assessOrder(o, metric.filter).state === 'pending' ? 'orange' : 'green'}>{assessOrder(o, metric.filter).state === 'pending' ? '待核对 · 暂未计入' : '已计入'}</Tag> }] : []),
       { title: '工单编号', dataIndex: 'id', width: 220, render: (v, o) => <Button type="link" size="small" onClick={() => setDetail(o)}>{v}</Button> },
       { title: '受理时间', dataIndex: 'receivedAt', width: 170 }, { title: '渠道', dataIndex: 'channel', width: 110 },
       { title: '分类', dataIndex: 'category', width: 120 }, { title: '街镇', dataIndex: 'street', width: 110 },
@@ -123,5 +132,5 @@ export default function WeeklyEvidenceDrawer({ analysis: a, metric, onClose }: {
         { key: 'description', label: '脱敏摘要', children: detail.description },
       ]} />}
     </Modal>
-  </Drawer>;
+  </Drawer>{reviewOpen && <ThemeExplorerDrawer analysis={a} theme={reviewTheme} onClose={() => setReviewOpen(false)} />}</>;
 }

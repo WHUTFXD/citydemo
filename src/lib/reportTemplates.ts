@@ -5,7 +5,7 @@ import type { IndicatorDefinition } from './indicatorDefinitions';
 export const REPORT_TYPES = { daily: '日报', weekly: '周报', topic: '专题报' } as const;
 export type ReportType = keyof typeof REPORT_TYPES;
 export type ThemeGroup = '热点事件' | '群众热议';
-export type ReportTheme = { id: string; name: string; group: ThemeGroup; filter: MetricFilter; custom?: boolean; note?: string };
+export type ReportTheme = { id: string; name: string; group: ThemeGroup; filter: MetricFilter; source?: 'city' | 'district' | 'custom' | 'semantic'; taxonomy?: 'city' | 'district'; path?: string; parentId?: string; custom?: boolean; note?: string };
 export type ThemeResult = ReportTheme & { count: number; previous: number; share: number; growth: number | null; concentration: number; points: { point: string; count: number }[]; score: number };
 export function selectThemeMode(ids: string[], themes: ReportTheme[], group: ThemeGroup, mode: 'recommended' | 'custom'): string[] {
   const other = ids.filter(id => themes.find(t => t.id === id)?.group !== group);
@@ -107,7 +107,7 @@ export function registerDefinitionMetric(a: Analysis, definition: IndicatorDefin
   if (definition.channel !== 'report') filter.channel = definition.channel;
   const token = registerMetric(a, definition.kind, filter, definition.period) as { metricId: string };
   const base = a.metrics[token.metricId], id = `${token.metricId}/definition/${definition.id}/v${definition.version}`;
-  a.metrics[id] = { ...base, id, label: `${definition.name}${context.category ? ` · ${context.category}` : ''}${context.point ? ` · ${context.point}` : ''}${context.keyword ? ` · ${context.keyword}` : ''}${context.semantic ? ` · ${context.semantic.topic}` : ''}`, definitionId: definition.id, definitionCode: definition.code, definitionVersion: definition.version, definitionDescription: definition.description };
+  a.metrics[id] = { ...base, id, label: `${definition.name}${context.cityCategory4 ? ` · ${context.cityCategory4.split(' / ').at(-1)}` : ''}${context.districtSubcategory || context.districtCategory ? ` · ${context.districtSubcategory || context.districtCategory}` : ''}${context.category ? ` · ${context.category}` : ''}${context.point ? ` · ${context.point}` : ''}${context.keyword ? ` · ${context.keyword}` : ''}${context.semantic ? ` · ${context.semantic.topic}` : ''}`, definitionId: definition.id, definitionCode: definition.code, definitionVersion: definition.version, definitionDescription: definition.description };
   return { metricId: id };
 }
 export function buildRecipeVersion(a: Analysis, recipe: SectionRecipe, number: number, modes: RewriteMode[] = []): SectionVersion {
@@ -138,7 +138,6 @@ export function buildRecipeVersion(a: Analysis, recipe: SectionRecipe, number: n
     if (!brief || modes.includes('突出环比')) paragraphs.push(['上期同口径工单', m('previous'), '件，本期环比', m('change'), '；上期为零或比较期不完整时不计算环比。']);
     if (!rows.length) paragraphs.push(['本期暂无匹配工单，请核对主题筛选条件。']);
     else if (!brief) paragraphs.push([theme.group === '热点事件' ? '本主题依据相关诉求归集工单，反映本期关注的问题。' : '本主题依据工单中的共同诉求归纳，不代表网络舆情热度。']);
-    if (theme.note && !brief) paragraphs.push([`主题说明：${theme.note}`]);
     const points = [...new Set(rows.map(o => o.point))].map(point => ({ point, count: rows.filter(o => o.point === point).length })).sort((x, y) => y.count - x.count).slice(0, 3);
     if (points.length) table = { headers: ['集中点位', '匹配工单量（件）'], rows: points.map(p => [[p.point], [m('count', { ...theme.filter, point: p.point })]]) };
     if (modes.includes('强调点位') && points[0]) paragraphs.push([`优先核查${points[0].point}，匹配`, m('count', { ...theme.filter, point: points[0].point }), '件。']);
@@ -172,7 +171,7 @@ export function generateTemplateReport(a: Analysis, template: ReportTemplate, de
     const entries = block.kind === 'topics' ? themes : [undefined];
     entries.forEach(theme => {
       const recipe: SectionRecipe = { block: structuredClone(block), definitions: snapshot, theme: theme ? structuredClone(theme) : undefined };
-      sections.push({ id: `${block.id}/${theme?.id || 'base'}`, title: theme ? `${theme.group}：${theme.name}` : block.title, active: 0, versions: [buildRecipeVersion(a, recipe, 1)], recipe });
+      sections.push({ id: `${block.id}/${theme?.id || 'base'}`, title: theme ? theme.name : block.title, active: 0, versions: [buildRecipeVersion(a, recipe, 1)], recipe });
     });
   }
   if (!sections.length) throw new Error('请为主题模板至少选择一个主题');

@@ -1,7 +1,9 @@
+import { inferScene } from './workOrderTaxonomy';
+import { topicChildren } from './briefingAnalysis';
 import { matches, registerMetric, textOf, type MetricFilter, type Report, type Token } from './weeklyReport';
 
 export type InsightContext = { id: string; section: string; version: number; paragraph: number; text: string; filter?: MetricFilter; ambiguous: boolean };
-export type InsightIntent = 'growth' | 'points' | 'structure' | 'checks';
+export type InsightIntent = 'growth' | 'points' | 'structure' | 'checks' | 'scenes';
 export type InsightAnswer = { intent?: InsightIntent; blocks: { title: string; tokens: Token[] }[] };
 export function insightContexts(report: Report): InsightContext[] {
   return report.sections.flatMap(section => {
@@ -20,6 +22,7 @@ export function insightContexts(report: Report): InsightContext[] {
 }
 function resolveIntent(prompt: string, previous?: InsightIntent): InsightIntent | undefined {
   if (/核实|核查|验证|建议|怎么办|下一步|排查/.test(prompt)) return 'checks';
+  if (/场景|餐厅|电梯|楼道|具体诉求|什么诉求/.test(prompt)) return 'scenes';
   if (/哪里|点位|地区|街镇|集中|地点/.test(prompt)) return 'points';
   if (/结构|业务|类型|构成|分类|诉求内容/.test(prompt)) return 'structure';
   if (/为什么|原因|增长|上涨|下降|变化|增幅|环比|洞察|分析|研判/.test(prompt)) return 'growth';
@@ -29,7 +32,7 @@ export function buildInsight(report: Report, context: InsightContext, prompt: st
   const currentContext = insightContexts(report).find(c => c.id === context.id);
   if (!currentContext || currentContext.text !== context.text) throw new Error('报告段落已变化，请重新选择上下文');
   const intent = resolveIntent(prompt, previous);
-  if (!intent) return { blocks: [{ title: '请选择研判方向', tokens: ['本地模拟支持：分析增长或下降、定位集中点位、查看业务类型结构、给出核查建议。可尝试“为什么增长这么多？”或“主要集中在哪里？”。'] }] };
+  if (!intent) return { blocks: [{ title: '请选择研判方向', tokens: ['本地模拟支持：分析增长或下降、定位集中点位、查看具体场景与诉求构成、给出核查建议。可尝试“为什么增长这么多？”或“主要集中在哪里？”。'] }] };
   if (currentContext.ambiguous || !currentContext.filter) return { intent, blocks: [{ title: '需要明确统计口径', tokens: ['这个段落没有单一可关联的统计口径。请选择包含同一主题数量或环比的段落，再发起研判。'] }] };
   const a = report.analysis, filter = currentContext.filter;
   const now = a.current.filter(o => matches(o, filter)), old = a.previous.filter(o => matches(o, filter));
@@ -50,14 +53,17 @@ export function buildInsight(report: Report, context: InsightContext, prompt: st
       if (a.comparisonComplete && now.length === old.length) blocks.push({ title: '总量持平', tokens: ['两期总量相同；局部点位仍可能一增一减，不能据局部变化认定整体增长。'] });
     }
   }
-  if (intent === 'growth' || intent === 'structure') {
-    const businesses = [...new Set([...now, ...old].map(o => o.business))].sort();
-    blocks.push({ title: '业务类型结构', tokens: ['按工单原始业务类型比较，区分投诉求助、咨询、表扬感谢等构成变化。'] });
-    businesses.forEach(business => blocks.push({ title: business, tokens: ['上期', metric('count', { business }, 'previous'), '件 → 本期', metric('count', { business }), '件。'] }));
+  if (intent === 'growth' || intent === 'structure' || intent === 'scenes') {
+    const scenes = [...new Set([...now, ...old].map(o => o.scene || inferScene(o)))].map(scene => ({ scene, now: now.filter(o => (o.scene || inferScene(o)) === scene).length, old: old.filter(o => (o.scene || inferScene(o)) === scene).length })).sort((x, y) => y.now - x.now);
+    blocks.push({ title: '投诉发生在哪些具体场景', tokens: ['根据点位及工单描述识别场景，比较同一主题在不同场景中的构成变化。'] });
+    scenes.slice(0, 3).forEach(({ scene }) => blocks.push({ title: scene, tokens: ['上期', metric('count', { scene }, 'previous'), '件 → 本期', metric('count', { scene }), '件。'] }));
+    const issues = topicChildren(a, { id: 'insight', name: context.section, group: '热点事件', filter }, 'semantic').slice(0, 3);
+    blocks.push({ title: '进一步看具体诉求', tokens: [issues.length ? '以下为从工单描述中识别的诉求表达，可能交叉，不可相加。可逐项打开相关工单核对。' : '当前描述未形成更多可识别的诉求分组，需要抽查工单原文补充判断。'] });
+    issues.forEach(issue => blocks.push({ title: issue.name, tokens: ['上期', metric('count', issue.filter, 'previous'), '件 → 本期', metric('count', issue.filter), '件。'] }));
   }
   blocks.push({ title: '研判边界与下一步', tokens: [
     '上述结果解释“哪些工单和点位带来了数量变化”，无法单凭工单数量确定现实原因。',
-    filter.category === '行道树' || /树|枝叶|采光/.test(filter.semantic?.topic || '') ? '建议抽查新增点位的工单原文及养护记录，核实是否集中反映枝叶遮挡、树木倾斜或养护响应；天气与季节因素需要另行核实。' : '建议抽查变化较大的点位工单原文，与办理记录及现场核查结果交叉验证。',
+    /树|枝叶|采光/.test([filter.category, filter.cityCategory4, filter.districtCategory, filter.semantic?.topic, context.section].join(' ')) ? '建议抽查新增点位的工单原文及养护记录，核实是否集中反映枝叶遮挡、树木倾斜或养护响应；天气与季节因素需要另行核实。' : '建议抽查变化较大的点位工单原文，与办理记录及现场核查结果交叉验证。',
     '同时检查同一事项是否多次来电、受理渠道或分类规则是否调整；当前仅按唯一工单编号去重，不等于按同一事件去重。',
     '本回答为本地规则模拟，不引入未经提供的天气、政策或现场事实，也不会自动改写报告。',
   ] });

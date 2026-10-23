@@ -1,3 +1,5 @@
+import { assessOrder } from './briefingAnalysis';
+import { inferScene } from './workOrderTaxonomy';
 import { REPORT_COMPILER, REPORT_PAGE, reportDocumentStyle } from './reportDocumentStyle';
 import { themeMatchReason, themeRuleDescription } from './themeMatching';
 import { matches, metricText, textOf, type Analysis, type Metric, type Order, type Report } from './weeklyReport';
@@ -56,8 +58,9 @@ export async function createEvidenceWorkbook(a: Analysis, metric: Metric, filter
   const rules = workbook.addWorksheet('统计口径');
   const current = workbook.addWorksheet('本期明细');
   const previous = workbook.addWorksheet('对比期明细');
-  const currentRows = filtered ? filtered.period === 'current' ? filtered.rows : [] : a.current;
-  const previousRows = filtered ? filtered.period === 'previous' ? filtered.rows : [] : a.previous;
+  const orderByReview = (rows: Order[]) => [...rows].sort((x, y) => ({ pending: 0, confirmed: 1, excluded: 2 }[assessOrder(x, metric.filter).state]) - ({ pending: 0, confirmed: 1, excluded: 2 }[assessOrder(y, metric.filter).state]));
+  const currentRows = orderByReview(filtered ? filtered.period === 'current' ? filtered.rows : [] : a.current);
+  const previousRows = orderByReview(filtered ? filtered.period === 'previous' ? filtered.rows : [] : a.previous);
   const writeOrders = (sheet: typeof current, rows: Order[]) => {
     sheet.columns = [
       { header: '唯一工单编号', key: 'id', width: 30 }, { header: '受理时间（上海时间）', key: 'date', width: 24 },
@@ -67,26 +70,34 @@ export async function createEvidenceWorkbook(a: Analysis, metric: Metric, filter
       { header: '脱敏诉求摘要', key: 'description', width: 75 }, { header: '工单计数', key: 'unit', width: 14 },
       { header: '匹配当前指标（1/0）', key: 'match', width: 22 },
       { header: '主题命中依据（本地规则模拟）', key: 'themeReason', width: 65 },
+      { header: '市级四级分类', key: 'cityCategory4', width: 55 }, { header: '区级案件小类', key: 'districtCategory', width: 22 }, { header: '区级案件子类', key: 'districtSubcategory', width: 28 }, { header: '诉求细分', key: 'issueType', width: 26 }, { header: '发生场景', key: 'scene', width: 24 }, { header: '人工归属结论', key: 'reviewDecision', width: 18 }, { header: '待核对（暂不计入）', key: 'pending', width: 22 },
     ];
     const literal = (value: string) => `"${value.replaceAll('"', '""')}"`;
     sheet.addRows(rows.map((o, index) => {
       const row = index + 2;
       const conditions = [metric.filter.category ? `E${row}=${literal(metric.filter.category)}` : '', metric.filter.point ? `G${row}=${literal(metric.filter.point)}` : '', metric.filter.business ? `D${row}=${literal(metric.filter.business)}` : '', metric.filter.channel ? `C${row}=${literal(metric.filter.channel)}` : '', metric.filter.keyword ? `ISNUMBER(SEARCH(${literal(metric.filter.keyword.replaceAll('~', '~~').replaceAll('*', '~*').replaceAll('?', '~?'))},I${row}&CHAR(1)&G${row}&CHAR(1)&E${row}))` : ''].filter(Boolean);
-      if (metric.filter.semantic) {
-        const search = (term: string) => `ISNUMBER(SEARCH(${literal(term.replaceAll('~', '~~').replaceAll('*', '~*').replaceAll('?', '~?'))},I${row}&CHAR(1)&G${row}))`;
-        metric.filter.semantic.groups.forEach(words => conditions.push(`OR(${words.map(search).join(',')})`));
-        metric.filter.semantic.excluded.forEach(term => conditions.push(`NOT(${search(term)})`));
-      }
-      return { ...o, themeReason: metric.filter.semantic ? themeMatchReason(metric.filter.semantic, o) : '', date: new Date(o.receivedAt.replace(' ', 'T') + 'Z'), unit: { formula: `IF(A${row}="",0,${metric.filter.channel ? `IF(C${row}=${literal(metric.filter.channel)},1,0)` : '1'})`, result: !metric.filter.channel || o.channel === metric.filter.channel ? 1 : 0 }, match: { formula: `IF(A${row}="",0,${conditions.length ? `IF(AND(${conditions.join(',')}),1,0)` : '1'})`, result: matches(o, metric.filter) ? 1 : 0 } };
+      const search = (term: string) => `ISNUMBER(SEARCH(${literal(term.replaceAll('~', '~~').replaceAll('*', '~*').replaceAll('?', '~?'))},I${row}&CHAR(1)&G${row}))`;
+      for (const [key, column] of [['cityCategory4', 'M'], ['districtCategory', 'N'], ['districtSubcategory', 'O'], ['issueType', 'P'], ['scene', 'Q']] as const) if (metric.filter[key]) conditions.push(`${column}${row}=${literal(metric.filter[key]!)}`);
+      metric.filter.textGroups?.forEach(words => conditions.push(`OR(${words.map(search).join(',')})`));
+      const semantic = metric.filter.semantic;
+      const semanticConditions = semantic ? [...semantic.groups.map(words => `OR(${words.map(search).join(',')})`), ...[...semantic.excluded, ...(semantic.reviewTerms || [])].map(term => `NOT(${search(term)})`)] : [];
+      const baseMatch = conditions.length ? `AND(${conditions.join(',')})` : 'TRUE';
+      const semanticMatch = semanticConditions.length ? `AND(${semanticConditions.join(',')})` : 'TRUE';
+      const matched = `IF(R${row}="计入",1,IF(R${row}="排除",0,IF(${semanticMatch},1,0)))`;
+      const assessment = assessOrder(o, metric.filter);
+      const related = semantic ? `AND(${baseMatch},R${row}="",OR(${semantic.groups.flat().map(search).join(',')}),${semantic.excluded.length ? `AND(${semantic.excluded.map(term => `NOT(${search(term)})`).join(',')})` : 'TRUE'},NOT(${semanticMatch}))` : 'FALSE';
+      return { ...o, scene: o.scene || inferScene(o), reviewDecision: metric.filter.reviewOverrides?.[o.id] === 'include' ? '计入' : metric.filter.reviewOverrides?.[o.id] === 'exclude' ? '排除' : '', themeReason: metric.filter.semantic ? (assessment.reason === '符合主题表达组合' ? themeMatchReason(metric.filter.semantic, o) : assessment.reason) : '', date: new Date(o.receivedAt.replace(' ', 'T') + 'Z'), unit: { formula: `IF(A${row}="",0,${metric.filter.channel ? `IF(C${row}=${literal(metric.filter.channel)},1,0)` : '1'})`, result: !metric.filter.channel || o.channel === metric.filter.channel ? 1 : 0 }, match: { formula: `IF(A${row}="",0,IF(${baseMatch},${matched},0))`, result: matches(o, metric.filter) ? 1 : 0 }, pending: { formula: `IF(A${row}="",0,IF(${related},1,0))`, result: assessment.state === 'pending' ? 1 : 0 } };
+
     }));
+    sheet.eachRow((row, index) => { if (index > 1 && (row.getCell('S').value as { result?: number })?.result === 1) row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF3D9' } }; });
     sheet.getColumn('date').numFmt = 'yyyy-mm-dd hh:mm:ss';
-    sheet.autoFilter = { from: 'A1', to: 'L1' };
+    sheet.autoFilter = { from: 'A1', to: 'S1' };
     sheet.views = [{ state: 'frozen', ySplit: 1 }];
   };
   writeOrders(current, currentRows); writeOrders(previous, previousRows);
   rules.columns = [{ width: 28 }, { width: 105 }];
   rules.addRows([
-    ['统计口径', '内容'], ['数据性质', a.dataRevision ? '模拟工单与本次会话导入明细合并，不代表真实业务情况' : '本地固定种子生成的模拟工单，不代表真实业务情况'],
+    ['统计口径', '内容'], ['数据性质', a.dataKind === 'imported' ? `当前会话导入的试用数据：${a.dataLabel || '业务工单'}；结果待业务核验` : a.dataRevision ? '当前会话数据集，数据性质请核对页面标识' : '本地固定种子生成的模拟工单，不代表真实业务情况'],
     ['指标', metric.label], ['原指标展示值', metricText(metric)], ['本期范围', `${a.scope.start}至${a.scope.end}`],
     ['比较期范围', `${a.previousScope.start}至${a.previousScope.end}`], ['统计渠道', a.scope.channel],
     ['时间与去重', '上海时间，起止日期均含全天；按唯一工单编号去重；同一编号只计一次'],
@@ -95,6 +106,7 @@ export async function createEvidenceWorkbook(a: Analysis, metric: Metric, filter
     ['天数', a.days], ['比较期完整', a.comparisonComplete ? '是' : '否；不计算环比'],
     ['舍入规则', '数量保留整数，日均及百分比保留1位小数；底层公式使用未舍入数值'],
     ['导出范围', filtered ? `当前筛选结果：${filtered.description}；仅导出所选周期的筛选记录，不代表完整指标。` : '本期及比较期完整口径明细；K列标识哪些记录匹配当前指标，J列用于复核总量与占比分母'],
+    ['人工归属', '待核对工单暂不计入K列统计，S列单独计数；R列保留当前人工归属结论，可在线下修改并复算。分类与语义筛选同时生效。'],
     ['核验说明', '汇总核验中的数值由明细单元格公式计算；修改明细后可在Excel中重新计算。未覆盖的比较期不能按0解释。'],
   ]);
   summary.columns = [{ width: 35 }, { width: 25 }, { width: 75 }];
@@ -115,6 +127,7 @@ export async function createEvidenceWorkbook(a: Analysis, metric: Metric, filter
     summary.addRow([metric.label, { formula, result: metric.value ?? (a.comparisonComplete ? '不可计算' : '比较期不完整') }, metric.formula]);
     summary.getCell('B7').numFmt = metric.kind === 'share' || metric.kind === 'change' ? '0.0%' : metric.kind === 'daily' ? '0.0' : '0';
   }
+  summary.addRow(['本期待核对（暂未计入）', { formula: sumRange('本期明细', 'S', currentRows.length), result: currentRows.filter(o => assessOrder(o, metric.filter).state === 'pending').length }, '按S列计数，不计入已确认工单量']);
   workbook.eachSheet(sheet => {
     sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
     sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2468B8' } };

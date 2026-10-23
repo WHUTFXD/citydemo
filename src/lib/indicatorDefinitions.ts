@@ -53,7 +53,7 @@ export function saveIndicatorDefinition(definitions: IndicatorDefinition[], inpu
   if (!['count', 'daily', 'share', 'change'].includes(item.kind) || !['current', 'previous'].includes(item.period)) throw new Error('请选择有效的计算方式和统计周期');
   if (!['report', '12345热线', '网格巡查', '其他渠道'].includes(item.channel)) throw new Error('请选择有效的渠道规则');
   if (typeof item.enabled !== 'boolean') throw new Error('请选择有效的启用状态');
-  if (item.category && !CATEGORIES.includes(item.category)) throw new Error('诉求分类无效');
+  if (item.category && !(CATEGORIES as readonly string[]).includes(item.category)) throw new Error('诉求分类无效');
   if (item.business && !['投诉求助', '咨询', '表扬感谢'].includes(item.business)) throw new Error('业务类型无效');
   if (item.point && item.point.length > 100) throw new Error('标准点位不得超过100字');
   if (item.kind === 'change' && item.period !== 'current') throw new Error('环比指标应选择本期，并对比前一等长周期');

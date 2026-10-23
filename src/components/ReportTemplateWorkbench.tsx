@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { App, Button, Card, Drawer, Empty, Input, Popconfirm, Select, Space, Tag } from 'antd';
 import { DeleteOutlined, DownOutlined, EyeOutlined, PlusOutlined, UpOutlined } from '@ant-design/icons';
-import PlatformShell from './PlatformShell';
+import BriefingShell from './BriefingShell';
 import { useWeeklyWorkspace } from './WeeklyWorkspaceProvider';
 import ReportTemplatePreview from './ReportTemplatePreview';
 import { BLOCK_LABELS, BLOCK_SLOTS, newBlock, REPORT_TYPES, SLOT_LABELS, type ReportTemplate, type ReportType, type TemplateBlock } from '@/lib/reportTemplates';
@@ -19,7 +19,7 @@ export default function ReportTemplateWorkbench() {
   function move(index: number, offset: number) {
     setEditor(t => { if (!t) return t; const blocks = [...t.blocks]; [blocks[index], blocks[index + offset]] = [blocks[index + offset], blocks[index]]; return { ...t, blocks }; });
   }
-  return <PlatformShell><div className="weekly-workbench"><header className="weekly-heading"><div><h1>模板管理</h1><p>配置报告结构与取数指标，日报、周报和专题报各有模板。</p></div><Space><Link href="/indicators">指标台</Link><Link href="/weekly-report">返回报告</Link><Button disabled={!storageReady} type="primary" icon={<PlusOutlined />} onClick={() => setEditor({ id: crypto.randomUUID(), name: '', description: '', type: type || 'weekly', version: 0, updatedAt: '', blocks: [newBlock('overview', crypto.randomUUID())] })}>新增模板</Button></Space></header>
+  return <BriefingShell><div className="weekly-workbench"><header className="weekly-heading"><div><h1>模板管理</h1><p>配置报告结构与取数指标，日报、周报和专题报各有模板。</p></div><Space><Link href="/indicators">指标台</Link><Link href="/briefing">返回报告</Link><Button disabled={!storageReady} type="primary" icon={<PlusOutlined />} onClick={() => setEditor({ id: crypto.randomUUID(), name: '', description: '', type: type || 'weekly', version: 0, updatedAt: '', blocks: [newBlock('overview', crypto.randomUUID())] })}>新增模板</Button></Space></header>
     <div className="template-manager-content"><div className="template-manager-search"><Input aria-label="搜索模板" placeholder="搜索名称或用途" value={search} onChange={e => setSearch(e.target.value)} allowClear /><Select aria-label="筛选报表类型" value={type} onChange={setType} allowClear placeholder="全部报表类型" options={Object.entries(REPORT_TYPES).map(([value, label]) => ({ value, label }))} /></div>
       {!storageAvailable && <p className="weekly-warning">浏览器存储不可用，模板仅在本次会话保留。</p>}
       <div className="template-card-grid">{filtered.map(t => <Card key={t.id} title={t.name} extra={<Tag color="blue">{REPORT_TYPES[t.type]} · v{t.version}</Tag>}><p>{t.description || '暂无用途说明'}</p><div className="template-structure">{t.blocks.map(b => <Tag key={b.id}>{b.title}</Tag>)}</div><Space wrap><Button icon={<EyeOutlined />} onClick={() => setPreview(t)}>预览</Button><Button onClick={() => setEditor(structuredClone(t))}>编辑</Button><Button onClick={() => setEditor({ ...structuredClone(t), id: crypto.randomUUID(), name: `${t.name}副本`, version: 0 })}>复制</Button><Popconfirm title="删除这个模板？" description="已生成的报告保留原模板快照。" okText="删除" cancelText="取消" onConfirm={() => { deleteTemplate(t.id); message.success('模板已删除'); }}><Button danger icon={<DeleteOutlined />}>删除</Button></Popconfirm></Space></Card>)}</div>{!filtered.length && <Empty description="暂无模板，可新增后用于报告生成" />}
@@ -35,5 +35,5 @@ export default function ReportTemplateWorkbench() {
         </Card>)}<Button block disabled={editor.blocks.length >= 12} icon={<PlusOutlined />} onClick={() => setEditor({ ...editor, blocks: [...editor.blocks, newBlock('custom', crypto.randomUUID())] })}>新增板块</Button>
       </div>}
     </Drawer>{preview && <ReportTemplatePreview template={preview} definitions={definitions} onClose={() => setPreview(undefined)} />}
-  </div></PlatformShell>;
+  </div></BriefingShell>;
 }

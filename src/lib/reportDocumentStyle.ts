@@ -10,11 +10,11 @@ export function reportDocumentStyle(report: Report) {
   const { start, end } = report.analysis.scope;
   return {
     masthead: report.analysis.scope.channel === '全渠道' ? '闵行区城运工单分析' : '闵行区12345热线分析',
-    issue: `${year}年${type}（演示稿）`,
+    issue: `${year}年${type}（${report.cadence === 'daily' ? '每日制作·' : ''}演示稿）`,
     cutoff: `统计截止：${year}年${month}月${day}日`,
     period: start === end ? `（${shortDate(end)}）` : `（${shortDate(start)}—${start.slice(0, 4) === end.slice(0, 4) ? shortDate(end) : end}）`,
     scopeNote: `统计范围：${report.analysis.scope.channel}；对比期：${report.analysis.previousScope.start}至${report.analysis.previousScope.end}${report.analysis.comparisonComplete ? '' : '（覆盖不完整）'}。`,
-    disclaimer: `模拟数据，仅用于产品演示。${report.dataRevision ? '报告已按当前会话上传明细重新计算。' : ''}`,
+    disclaimer: `${report.analysis.dataKind === 'imported' ? '试用数据，统计结果待业务核验。' : '模拟数据，仅用于产品演示。'}${report.dataRevision ? '报告已按当前会话上传明细重新计算。' : ''}`,
   };
 }
 export function chineseSectionNumber(number: number): string {

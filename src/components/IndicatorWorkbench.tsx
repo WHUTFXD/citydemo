@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Alert, App, Button, Descriptions, Drawer, Empty, Form, Input, Select, Segmented, Space, Switch, Table, Tag, Tooltip } from 'antd';
 import { CopyOutlined, DatabaseOutlined, EditOutlined, FileTextOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
-import PlatformShell from './PlatformShell';
+import BriefingShell from './BriefingShell';
 import { useWeeklyWorkspace } from './WeeklyWorkspaceProvider';
 import IndicatorDisputes from './IndicatorDisputes';
 import { isOpenDispute } from '@/lib/metricDisputes';
@@ -47,7 +47,7 @@ export default function IndicatorWorkbench() {
     try { saveDefinition({ ...d, enabled: !d.enabled }, d.id); message.success(d.enabled ? '指标已停用，定义仍保留' : '指标已启用'); }
     catch (error) { message.error((error as Error).message); }
   }
-  return <PlatformShell><div className="weekly-workbench indicator-workbench"><header className="weekly-heading"><div className="flex items-center gap-3"><div className="weekly-heading-icon"><DatabaseOutlined /></div><div><h1>指标台</h1><p>维护统计口径，处理指标异议</p></div><Tag color="blue">口径维护</Tag></div><div className="indicator-header-actions"><Link href="/templates">模板管理</Link><Link href="/weekly-report" className="weekly-indicator-link"><FileTextOutlined /> 返回智能报告</Link><Button type="primary" icon={<PlusOutlined />} disabled={!storageReady} onClick={() => openEditor()}>新增指标</Button></div></header>
+  return <BriefingShell><div className="weekly-workbench indicator-workbench"><header className="weekly-heading"><div className="flex items-center gap-3"><div className="weekly-heading-icon"><DatabaseOutlined /></div><div><h1>指标台</h1><p>维护统计口径，处理指标异议</p></div><Tag color="blue">口径维护</Tag></div><div className="indicator-header-actions"><Link href="/templates">模板管理</Link><Link href="/briefing" className="weekly-indicator-link"><FileTextOutlined /> 返回智能报告</Link><Button type="primary" icon={<PlusOutlined />} disabled={!storageReady} onClick={() => openEditor()}>新增指标</Button></div></header>
     <div className="indicator-content"><div style={{ marginBottom: 20 }}><Segmented aria-label="指标台工作区" value={tab} onChange={setTab} options={[{ label: '指标定义', value: 'definitions' }, { label: `异议申报（${disputes.filter(isOpenDispute).length} 待处理）`, value: 'disputes' }]} /></div>{tab === 'disputes' ? <IndicatorDisputes /> : <><div className="indicator-purpose"><DatabaseOutlined /><div><strong>先定义“怎么算”，再用于具体统计</strong><p>在这里维护计算方式、筛选条件和口径说明。具体数值、工单明细及数据核验仍在周报中查看。</p></div><span>本机保存</span></div>
       {!storageAvailable && <Alert type="warning" showIcon title="浏览器本地存储不可用，本次维护仅在当前会话中保留。" />}
       <section className="indicator-panel"><div className="indicator-panel-heading"><div><h2>指标定义</h2><p>统一统计口径，支持新增、编辑、复制与启停。</p></div><Segmented value={status} onChange={value => { setStatus(value); setPage(1); }} options={[{ value: 'all', label: '全部' }, { value: 'enabled', label: '已启用' }, { value: 'disabled', label: '已停用' }]} /></div>
@@ -85,5 +85,5 @@ export default function IndicatorWorkbench() {
         { key: 'updated', label: '最近修改', children: detail.updatedAt ? new Date(detail.updatedAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) : '系统预置' },
       ]} /><Button style={{ marginTop: 18 }} icon={<CopyOutlined />} onClick={() => openEditor(detail, true)}>复制为新指标</Button></>}
     </Drawer>
-  </div></PlatformShell>;
+  </div></BriefingShell>;
 }

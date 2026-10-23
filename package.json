@@ -8,7 +8,7 @@
     "build:pages": "node scripts/build-pages.mjs",
     "start": "next start",
     "lint": "eslint",
-    "test:weekly": "tsc src/lib/reportInsight.ts src/lib/weeklyReport.ts src/lib/weeklyReportExport.ts src/lib/reportTemplates.ts src/lib/reportDataImport.ts src/lib/metricPlatform.ts src/lib/metricDisputes.ts src/lib/indicatorDefinitions.ts --outDir .qa --module commonjs --target es2022 --esModuleInterop --skipLibCheck && node --test tests/weekly-report.test.cjs tests/report-templates.test.cjs"
+    "test:weekly": "tsc src/lib/textDiscovery.ts src/lib/trialData.ts src/lib/briefingAnalysis.ts src/lib/reportInsight.ts src/lib/weeklyReport.ts src/lib/weeklyReportExport.ts src/lib/reportTemplates.ts src/lib/reportDataImport.ts src/lib/metricPlatform.ts src/lib/metricDisputes.ts src/lib/indicatorDefinitions.ts --outDir .qa --module commonjs --target es2022 --esModuleInterop --skipLibCheck && node --test tests/weekly-report.test.cjs tests/report-templates.test.cjs tests/briefing-redesign.test.cjs"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",
